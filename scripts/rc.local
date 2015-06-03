@@ -17,6 +17,6 @@ if [ "$_IP" ]; then
   printf "My IP address is %s\n" "$_IP"
 fi
 
-/home/pi/scripts/network-monitor.sh &
-
+sudo /home/pi/scripts/network-monitor.sh &
+/home/pi/git/respi/scripts/report-public-ip.sh &
 exit 0
