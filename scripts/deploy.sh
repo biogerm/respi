@@ -1,4 +1,6 @@
 #!/bin/bash
+git config --global user.email "biogerm@github.com"
+git config --global user.name "BiOgErM"
 while [ true ]; do
    echo "Would you like to setup AirPlay? (Y/N)"
    read AIRPLAY_YES
@@ -14,20 +16,50 @@ while [ true ]; do
    elif [ "$AIRPLAY_YES" = "N" ]  || [ "$AIRPLAY_YES" = "n" ]; then
       AIRPLAY="false"
       break
+   else
+       echo "Please type Y or N"
    fi
 done
-echo "Please input ppp password:"
-read KEY
-if [ "$KEY" = "" ]; then
-   echo "Empty key"
-   exit
-fi
-echo "Please input DDNS password:"
-read DDNS_KEY
-if [ "$DDNS_KEY" = "" ]; then
-   echo "Empty key"
-   exit
-fi
+
+while [ true ]; do
+   echo "Would you like to setup PPTP? (Y/N)"
+   read PPTP_YES
+   if [ "$PPTP_YES" = "Y" ]  || [ "$PPTP_YES" = "y" ]; then
+       echo "Please input ppp password:"
+       read KEY
+       if [ "$KEY" = "" ]; then
+	   echo "Empty password, try again"
+       else
+	   PPTP="true"
+	   break
+       fi
+   elif [ "$PPTP_YES" = "N" ]  || [ "$PPTP_YES" = "n" ]; then
+       PPTP="false"
+       break
+   else
+       echo "Please type Y or N"
+   fi
+done
+
+while [ true ]; do
+    echo "Would you like to setup DDNS? (Y/N)"
+    read DDNS_YES
+    if [ "$DDNS_YES" = "Y" ]  || [ "$DDNS_YES" = "y" ]; then
+	echo "Please input DDNS password:"
+	read DDNS_KEY
+	if [ "$DDNS_KEY" = "" ]; then
+	    echo "Empty password, try again"
+	else
+	    DDNS="true"
+	    break
+	fi
+    elif [ "$DDNS_YES" = "N" ]  || [ "$DDNS_YES" = "n" ]; then
+        DDNS="false"
+	break
+    else
+        echo "Please type Y or N"
+    fi
+done
 
 # install Locale
 sudo locale-gen en_US.UTF-8
@@ -36,12 +68,13 @@ echo "Please choose en_US.UTF-8 as the only option in the following dialog and m
 read enter
 sudo dpkg-reconfigure locales
 sudo update-locale LANG=en_US.UTF-8 
+export LC_ALL "en_US.UTF-8"
 
-
-# Install Emacs and PPTPD
+# Install Emacs and PPTPD 
 sudo apt-get -q -y install emacs23 pptpd
 cp ../configs/.emacs /home/pi/
-
+CMD="cp `pwd`/../configs/.emacs /home/pi/"
+$CMD
 
 # Install AirPlayer
 function installAirPlay {
@@ -74,31 +107,45 @@ if [ "$AIRPLAY" = "true" ]; then
     installAirPlay
 fi
 
-echo "Install done"
-read DONE
-# Enable IPv4 port forwarding
-sudo sed -i -r 's/^\s*#(net\.ipv4\.ip_forward=1.*)/\1/' /etc/sysctl.conf
-# Reload the config file to have the change take effect immediately.
-sudo -i sysctl -p
+# Configure PPTP VPN
+function configurePPTP {
+    # Enable IPv4 port forwarding
+    sudo sed -i -r 's/^\s*#(net\.ipv4\.ip_forward=1.*)/\1/' /etc/sysctl.conf
+    # Reload the config file to have the change take effect immediately.
+    sudo -i sysctl -p
 
-OUTIF=`/sbin/ip route show to exact 0/0 | sed -r 's/.*dev\s+(\S+).*/\1/'`
-##sudo -i iptables --table nat --append POSTROUTING --out-interface $OUTIF --jump MASQUERADE
-# Enable NAT on boot from the rc.local script.
-CMD="iptables --table nat --append POSTROUTING --out-interface $OUTIF --jump MASQUERADE"
+    OUTIF=`/sbin/ip route show to exact 0/0 | sed -r 's/.*dev\s+(\S+).*/\1/'`
+    ##sudo -i iptables --table nat --append POSTROUTING --out-interface $OUTIF --jump MASQUERADE
+    # Enable NAT on boot from the rc.local script.
+    CMD="iptables --table nat --append POSTROUTING --out-interface $OUTIF --jump MASQUERADE"
+    
+    sudo -i $CMD
+    sudo sed -i "\$i$CMD\n" /etc/rc.local
+    
+    echo "biogerm pptpd $KEY *" | sudo tee -a /etc/ppp/chap-secrets
+    echo "ms-dns 8.8.8.8" | sudo tee -a /etc/ppp/pptpd-options
+    echo "ms-dns 8.8.4.4" | sudo tee -a /etc/ppp/pptpd-options
+    sudo /etc/init.d/pptpd restart
+    echo "PPTP ready"
+}
 
-sudo -i $CMD
+if [ "$PPTP" = "true" ]; then
+    configurePPTP
+fi
+
+function configureDDNS {
+    # Enable report DDNS on startup
+    CMD="`pwd`/report-ddns.sh >> /home/pi/reportddns.log &"
+    sudo sed -i "\$i$CMD\n" /etc/rc.local
+
+    # Replace keys in the DDNS script
+    sed -i "s/{PASSWORD}/$DDNS_KEY/g" report-ddns.sh
+}
+
+if [ "$DDNS" = "true" ]; then
+    configureDDNS
+fi
+ 
+# Enable Wifi Auto-reconnect
+CMD="`pwd`/network-monitor.sh >> /home/pi/networkMonitor.log &"
 sudo sed -i "\$i$CMD\n" /etc/rc.local
-
-echo "biogerm pptpd $KEY *" | sudo tee -a /etc/ppp/chap-secrets
-echo "ms-dns 8.8.8.8" | sudo tee -a /etc/ppp/pptpd-options
-echo "ms-dns 8.8.4.4" | sudo tee -a /etc/ppp/pptpd-options
-sudo /etc/init.d/pptpd restart
-echo "PPTP ready"
-
-# Enable report DDNS on startup
-CMD="`pwd`/report-ddns.sh >> /home/ubuntu/reportddns.log &"
-sudo sed -i "\$i$CMD\n" /etc/rc.local
-
-# Replace keys in the DDNS script
-sed -i "s/{PASSWORD}/$DDNS_KEY/g" report-ddns.sh
-
