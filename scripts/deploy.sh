@@ -1,6 +1,9 @@
 #!/bin/bash
 git config --global user.email "biogerm@github.com"
 git config --global user.name "BiOgErM"
+
+# User choices of functions
+
 while [ true ]; do
    echo "Would you like to setup AirPlay? (Y/N)"
    read AIRPLAY_YES
@@ -45,21 +48,60 @@ while [ true ]; do
     echo "Would you like to setup DDNS? (Y/N)"
     read DDNS_YES
     if [ "$DDNS_YES" = "Y" ]  || [ "$DDNS_YES" = "y" ]; then
-	echo "Please input DDNS password:"
-	read DDNS_KEY
-	if [ "$DDNS_KEY" = "" ]; then
-	    echo "Empty password, try again"
-	else
-	    DDNS="true"
-	    break
-	fi
+	     echo "Please input DDNS password:"
+	     read DDNS_KEY
+	     if [ "$DDNS_KEY" = "" ]; then
+	       echo "Empty password, try again"
+	     else
+	       DDNS="true"
+	       break
+	     fi
     elif [ "$DDNS_YES" = "N" ]  || [ "$DDNS_YES" = "n" ]; then
         DDNS="false"
-	break
+	       break
     else
         echo "Please type Y or N"
     fi
 done
+
+while [ true ]; do
+    echo "Would you like to setup LIRC Universal Remote Controller (Require tailor made hardware)? (Y/N)"
+    read LIRC_YES
+    if [ "$LIRC_YES" = "Y" ]  || [ "$LIRC_YES" = "y" ]; then
+        LIRC="true"
+        echo "Please input LIRC_IN GPIO port number (default 23):"
+        read LIRC_IN
+        if [ "$LIRC_IN" = "" ]; then
+          echo "Empty LIRC_IN, use default 23"
+          LIRC_IN=23
+        fi
+        echo "Please input LIRC_OUT GPIO port number (default 22):"
+        read LIRC_OUT
+        if [ "$LIRC_IN" = "" ]; then
+          echo "Empty LIRC_IN, use default 22"
+          LIRC_OUT=22
+        fi
+    elif [ "$LIRC_YES" = "N" ]  || [ "$LIRC_YES" = "n" ]; then
+        LIRC="false"
+        break
+    else
+        echo "Please type Y or N"
+    fi
+done
+
+# Generic functions
+function replaceLine {
+  filename=$1
+  from=$2
+  to=$3
+  sudo sed -i 's/$from/$to/g' $filename
+}
+
+function addNewLine {
+  filename=$1
+  line=$2
+  sudo sed -i '\$i$line\n' $filename
+}
 
 # install Locale
 sudo locale-gen en_US.UTF-8
@@ -133,6 +175,7 @@ if [ "$PPTP" = "true" ]; then
     configurePPTP
 fi
 
+# Configure DDNS
 function configureDDNS {
     # Enable report DDNS on startup
     CMD="`pwd`/report-ddns.sh >> /home/pi/reportddns.log &"
@@ -145,7 +188,24 @@ function configureDDNS {
 if [ "$DDNS" = "true" ]; then
     configureDDNS
 fi
- 
+
+# Configure LIRC
+function configureLIRC {
+  sudo apt-get install lirc
+  NEW_LINE="lirc_dev"
+  sudo sed -i "\$i$NEW_LINE\n" /etc/modules
+  NEW_LINE="lirc_rpi gpio_in_pin=$LIRC_IN gpio_out_pin=$LIRC_OUT"
+  sudo sed -i "\$i$NEW_LINE\n" /etc/modules
+  filename="/etc/lirc/hardware.conf"
+  replaceLine $filename LIRCD_ARGS="" LIRCD_ARGS="--uinput"
+  
+
+} 
+
+if [ "$LIRC" = "true" ]; then
+    configureLIRC
+fi
+
 # Enable Wifi Auto-reconnect
 CMD="`pwd`/network-monitor.sh >> /home/pi/networkMonitor.log &"
 sudo sed -i "\$i$CMD\n" /etc/rc.local
