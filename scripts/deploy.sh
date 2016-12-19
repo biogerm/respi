@@ -94,13 +94,13 @@ function replaceLine {
   filename=$1
   from=$2
   to=$3
-  sudo sed -i 's/$from/$to/g' $filename
+  sudo sed -i "s/${from}/${to}/g" ${filename}
 }
 
 function addNewLine {
   filename=$1
   line=$2
-  sudo sed -i '\$i$line\n' $filename
+  sudo sed -i "\$i${line}\n" ${filename}
 }
 
 # install Locale
@@ -197,9 +197,14 @@ function configureLIRC {
   NEW_LINE="lirc_rpi gpio_in_pin=$LIRC_IN gpio_out_pin=$LIRC_OUT"
   sudo sed -i "\$i$NEW_LINE\n" /etc/modules
   filename="/etc/lirc/hardware.conf"
-  replaceLine $filename LIRCD_ARGS="" LIRCD_ARGS="--uinput"
-  
-
+  replaceLine $filename 'LIRCD_ARGS=""' 'LIRCD_ARGS="--uinput"'
+  replaceLine $filename UNCONFIGURED default
+  replaceLine $filename 'DEVICE=""' 'DEVICE="\/dev\/lirc0"'
+  replaceLine $filename 'MODULES=""' 'MODULES="lirc_rpi"'
+  filename="/boot/config.txt"
+  addNewLine $filename "dtoverlay=lirc-rpi,gpio_in_pin=$LIRC_IN,gpio_out_pin=$LIRC_OUT"
+  sudo /etc/init.d/lirc stop
+  sudo /etc/init.d/lirc start
 } 
 
 if [ "$LIRC" = "true" ]; then
