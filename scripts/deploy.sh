@@ -192,19 +192,36 @@ fi
 # Configure LIRC
 function configureLIRC {
   sudo apt-get install lirc
-  NEW_LINE="lirc_dev"
-  sudo sed -i "\$i$NEW_LINE\n" /etc/modules
-  NEW_LINE="lirc_rpi gpio_in_pin=$LIRC_IN gpio_out_pin=$LIRC_OUT"
-  sudo sed -i "\$i$NEW_LINE\n" /etc/modules
+
+  # modules
+  filename="/etc/modules"
+  addNewLine $filename "lirc_dev"
+  addNewLine $filename "lirc_rpi gpio_in_pin=$LIRC_IN gpio_out_pin=$LIRC_OUT"
+
+  # hardware.conf
   filename="/etc/lirc/hardware.conf"
   replaceLine $filename 'LIRCD_ARGS=""' 'LIRCD_ARGS="--uinput"'
   replaceLine $filename UNCONFIGURED default
   replaceLine $filename 'DEVICE=""' 'DEVICE="\/dev\/lirc0"'
   replaceLine $filename 'MODULES=""' 'MODULES="lirc_rpi"'
+
+  # boot config
   filename="/boot/config.txt"
   addNewLine $filename "dtoverlay=lirc-rpi,gpio_in_pin=$LIRC_IN,gpio_out_pin=$LIRC_OUT"
+
+  # PowerBot profile
+  sudo cp ../configs/samsung_robot_customized.conf /etc/lirc/lircd.conf
+
+  # Restart Service
   sudo /etc/init.d/lirc stop
   sudo /etc/init.d/lirc start
+
+  # Crontab
+  crontab -l > mycron
+  filename="mycron"
+  echo "30 11 * * 1-5 /home/pi/git/respi/scripts/robot-control.sh" >> mycron
+  crontab mycron
+  rm mycron
 } 
 
 if [ "$LIRC" = "true" ]; then
