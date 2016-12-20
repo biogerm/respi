@@ -18,5 +18,5 @@ if [ "$_IP" ]; then
 fi
 
 sudo /home/pi/git/respi/scripts/network-monitor.sh &
-/home/pi/git/respi/scripts/report-public-ip.sh &
+/home/pi/git/respi/scripts/report-public-ip.sh >> /home/pi/report.log &
 exit 0
