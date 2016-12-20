@@ -2,6 +2,16 @@
 git config --global user.email "biogerm@github.com"
 git config --global user.name "BiOgErM"
 
+# Check if the script is executed as sudoer
+error() {
+  printf '\E[31m'; echo "$@"; printf '\E[0m'
+}
+
+if [[ $EUID -ne 0 ]]; then
+    error "This script should be run using sudo or as the root user"
+    exit 1
+fi
+
 # User choices of functions
 
 while [ true ]; do
@@ -77,10 +87,11 @@ while [ true ]; do
         fi
         echo "Please input LIRC_OUT GPIO port number (default 22):"
         read LIRC_OUT
-        if [ "$LIRC_IN" = "" ]; then
-          echo "Empty LIRC_IN, use default 22"
+        if [ "$LIRC_OUT" = "" ]; then
+          echo "Empty LIRC_OUT, use default 22"
           LIRC_OUT=22
         fi
+        break
     elif [ "$LIRC_YES" = "N" ]  || [ "$LIRC_YES" = "n" ]; then
         LIRC="false"
         break
@@ -191,7 +202,7 @@ fi
 
 # Configure LIRC
 function configureLIRC {
-  sudo apt-get install lirc
+  sudo apt-get -y install lirc
 
   # modules
   filename="/etc/modules"
@@ -212,8 +223,7 @@ function configureLIRC {
   # PowerBot profile
   sudo cp ../configs/samsung_robot_customized.conf /etc/lirc/lircd.conf
 
-  # Restart Service
-  sudo /etc/init.d/lirc stop
+  # Start Service
   sudo /etc/init.d/lirc start
 
   # Crontab
