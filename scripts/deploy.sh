@@ -230,7 +230,7 @@ function configureLIRC {
   crontab -l > mycron
   filename="mycron"
   echo "30 11 * * 1-5 /home/pi/git/respi/scripts/robot-control.sh" >> mycron
-  crontab mycron
+  crontab -u pi mycron
   rm mycron
 } 
 
