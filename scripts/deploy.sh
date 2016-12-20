@@ -100,6 +100,23 @@ while [ true ]; do
     fi
 done
 
+while [ true ]; do
+    echo "Would you like to automatically reboot RPi everyday? (Y/N)"
+    read ANSWER
+    if [ "$ANSWER" = "Y" ]  || [ "$ANSWER" = "y" ]; then
+        crontab -l > mycron
+        filename="mycron"
+        echo "0 14 * * * reboot" >> mycron
+        crontab mycron
+        rm mycron
+        break
+    elif [ "$ANSWER" = "N" ]  || [ "$ANSWER" = "n" ]; then
+        break
+    else
+        echo "Please type Y or N"
+    fi
+done
+
 # Generic functions
 function replaceLine {
   filename=$1
