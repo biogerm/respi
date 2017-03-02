@@ -1,7 +1,7 @@
 {  
    "bridge":{  
       "name":"Homebridge",
-      "username":"38:2C:4A:CC:5A:C8",
+      "username":"F0:B4:29:CC:6B:EF",
       "port":51826,
       "pin":"031-45-154"
    },
@@ -9,11 +9,15 @@
       {  
          "platform":"AqaraPlatform",
          "sid":[  
-            "382C4ACC5AC8"
+            "f0b429cc6bef"
          ],
          "password":[  
             "gk1fkp4q40qrxi1k"
          ]
+      },
+      {
+         "platform":"yeelight",
+         "name":"yeelight"
       }
    ]
 }

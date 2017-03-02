@@ -327,6 +327,7 @@ function configureHomebridge {
     cd /usr/lib/node_modules/hap-nodejs/node_modules/mdns
     node-gyp BUILDTYPE=Release rebuild
     npm install -g homebridge-aqara
+    npm install -g homebridge-yeelight
     cp ../configs/homebridge/homebridge /etc/default/
     cp ../configs/homebridge/homebridge.service /etc/systemd/system/
     useradd --system homebridge
