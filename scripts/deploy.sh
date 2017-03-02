@@ -2,18 +2,49 @@
 git config --global user.email "biogerm@github.com"
 git config --global user.name "BiOgErM"
 
-# Check if the script is executed as sudoer
-error() {
+# Generic functions
+function replaceLine {
+  filename=$1
+  from=$2
+  to=$3
+  sudo sed -i "s/${from}/${to}/g" ${filename}
+}
+
+function addNewLine {
+  filename=$1
+  line=$2
+  sudo sed -i "\$i${line}\n" ${filename}
+}
+
+function error {
   printf '\E[31m'; echo "$@"; printf '\E[0m'
 }
 
+function yesOrNo {
+    question=$1
+    local flag="$2"
+    while [ true ]; do
+	echo "Would you like to "${question}"? (Y/N)"
+	read ANSWER
+	if [ "$ANSWER" = "Y" ]  || [ "$ANSWER" = "y" ]; then
+	    eval $flag="true"
+            break
+	elif [ "$ANSWER" = "N" ]  || [ "$ANSWER" = "n" ]; then
+	    eval $flag="false"
+            break
+	else
+            echo "Please type Y or N"
+	fi
+    done
+}
+
+# Check if the script is executed as sudoer
 if [[ $EUID -ne 0 ]]; then
     error "This script should be run using sudo or as the root user"
     exit 1
 fi
 
 # User choices of functions
-
 while [ true ]; do
    echo "Would you like to setup AirPlay? (Y/N)"
    read AIRPLAY_YES
@@ -100,51 +131,72 @@ while [ true ]; do
     fi
 done
 
-while [ true ]; do
-    echo "Would you like to automatically reboot RPi everyday? (Y/N)"
-    read ANSWER
-    if [ "$ANSWER" = "Y" ]  || [ "$ANSWER" = "y" ]; then
-        crontab -l > mycron
-        filename="mycron"
-        echo "0 14 * * * reboot" >> mycron
-        crontab mycron
-        rm mycron
-        break
-    elif [ "$ANSWER" = "N" ]  || [ "$ANSWER" = "n" ]; then
-        break
-    else
-        echo "Please type Y or N"
-    fi
-done
+HOMEBRIDGE="HOMEBRIDGE"
+yesOrNo "install Homebridge for Mi Home" "${HOMEBRIDGE}"
 
-# Generic functions
-function replaceLine {
-  filename=$1
-  from=$2
-  to=$3
-  sudo sed -i "s/${from}/${to}/g" ${filename}
+AUTOREBOOT="AUTOREBOOT"
+yesOrNo "automatically reboot RPI everyday" "${AUTOREBOOT}"
+
+CONF_LOCALE="CONF_LOCALE"
+yesOrNo "configure locale" "${CONF_LOCALE}"
+
+EMACS="EMACS"
+yesOrNo "install emacs" "${EMACS}"
+
+WIFI="WIFI"
+yesOrNo "enable WiFi auto-reconnect" "${WIFI}"
+
+
+
+
+
+
+
+
+
+# Configure automatic daily reboot
+function automaticReboot {
+    crontab -l > mycron
+    #filename="mycron"
+    echo "0 14 * * * reboot" >> mycron
+    crontab mycron
+    rm mycron
 }
 
-function addNewLine {
-  filename=$1
-  line=$2
-  sudo sed -i "\$i${line}\n" ${filename}
+if [ "$AUTOREBOOT" = "true" ]; then
+    automaticReboot
+fi
+
+
+# Configure locale
+function configureLocale {
+    # install Locale
+    sudo locale-gen en_US.UTF-8
+    sudo locale-gen en en_US en_US.UTF-8
+    echo "Please choose en_US.UTF-8 as the only option in the following dialog and make it as default in the second dialog. Enter to continue."
+    read enter
+    sudo dpkg-reconfigure locales
+    sudo update-locale LANG=en_US.UTF-8 
+    export LC_ALL "en_US.UTF-8"
 }
 
-# install Locale
-sudo locale-gen en_US.UTF-8
-sudo locale-gen en en_US en_US.UTF-8
-echo "Please choose en_US.UTF-8 as the only option in the following dialog and make it as default in the second dialog. Enter to continue."
-read enter
-sudo dpkg-reconfigure locales
-sudo update-locale LANG=en_US.UTF-8 
-export LC_ALL "en_US.UTF-8"
+if [ "$CONF_LOCALE" = "true" ]; then
+    configureLocale
+fi
 
-# Install Emacs and PPTPD 
-sudo apt-get -q -y install emacs23 pptpd
-cp ../configs/.emacs /home/pi/
-CMD="cp `pwd`/../configs/.emacs /home/pi/"
-$CMD
+
+# Install Emacs
+function installEmacs {
+    sudo apt-get -q -y install emacs23
+    cp ../configs/.emacs /home/pi/
+    CMD="cp `pwd`/../configs/.emacs /home/pi/"
+    $CMD
+}
+
+if [ "$EMACS" = "true" ]; then
+    installEmacs
+fi
+
 
 # Install AirPlayer
 function installAirPlay {
@@ -177,8 +229,12 @@ if [ "$AIRPLAY" = "true" ]; then
     installAirPlay
 fi
 
+
 # Configure PPTP VPN
 function configurePPTP {
+    # Install PPTPD
+    sudo apt-get -q -y install pptpd
+    
     # Enable IPv4 port forwarding
     sudo sed -i -r 's/^\s*#(net\.ipv4\.ip_forward=1.*)/\1/' /etc/sysctl.conf
     # Reload the config file to have the change take effect immediately.
@@ -203,6 +259,7 @@ if [ "$PPTP" = "true" ]; then
     configurePPTP
 fi
 
+
 # Configure DDNS
 function configureDDNS {
     # Enable report DDNS on startup
@@ -216,6 +273,7 @@ function configureDDNS {
 if [ "$DDNS" = "true" ]; then
     configureDDNS
 fi
+
 
 # Configure LIRC
 function configureLIRC {
@@ -255,6 +313,41 @@ if [ "$LIRC" = "true" ]; then
     configureLIRC
 fi
 
+# Configure Homebridge
+function configureHomebridge {
+    echo "Home Bridge is being installed...(warning.. this script hasn't been tested...any problem occurs, go to github )"
+    echo "Currently only working on Jessie"
+    apt-get install -y git make
+    curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+    apt-get install -y nodejs
+    apt-get install -y libavahi-compat-libdnssd-dev
+    npm install -g --unsafe-perm homebridge hap-nodejs node-gyp
+    cd /usr/lib/node_modules/homebridge/
+    npm install --unsafe-perm bignum
+    cd /usr/lib/node_modules/hap-nodejs/node_modules/mdns
+    node-gyp BUILDTYPE=Release rebuild
+    npm install -g homebridge-aqara
+    cp ../configs/homebridge/homebridge /etc/default/
+    cp ../configs/homebridge/homebridge.service /etc/systemd/system/
+    useradd --system homebridge
+    mkdir /var/lib/homebridge
+    cp ../configs/homebridge/config.json /var/lib/homebridge/
+    chmod -R 777 /var/lib/homebridge
+    systemctl daemon-reload
+    systemctl enable homebridge
+    systemctl start homebridge
+}
+
+if [ "$HOMEBRIDGE" = "true" ]; then
+    configureHomebridge
+fi
+
 # Enable Wifi Auto-reconnect
-CMD="`pwd`/network-monitor.sh >> /home/pi/networkMonitor.log &"
-sudo sed -i "\$i$CMD\n" /etc/rc.local
+function configureWifiAutoReconnect {
+    CMD="`pwd`/network-monitor.sh >> /home/pi/networkMonitor.log &"
+    sudo sed -i "\$i$CMD\n" /etc/rc.local
+}
+
+if [ "$WIFI" = "true" ]; then
+    configureWifiAutoReconnect
+fi

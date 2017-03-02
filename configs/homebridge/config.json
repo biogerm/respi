@@ -1,0 +1,19 @@
+{  
+   "bridge":{  
+      "name":"Homebridge",
+      "username":"38:2C:4A:CC:5A:C8",
+      "port":51826,
+      "pin":"031-45-154"
+   },
+   "platforms":[  
+      {  
+         "platform":"AqaraPlatform",
+         "sid":[  
+            "382C4ACC5AC8"
+         ],
+         "password":[  
+            "gk1fkp4q40qrxi1k"
+         ]
+      }
+   ]
+}
