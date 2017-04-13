@@ -203,6 +203,7 @@ function installAirPlay {
     echo "Enabling AirPlay"
     sudo apt-get -q -y install git libao-dev libssl-dev libcrypt-openssl-rsa-perl libio-socket-inet6-perl libwww-perl avahi-utils libmodule-build-perl
     echo "Cloning perl-net-sdp repo"
+    pushd .
     cd /home/pi/git
     git clone https://github.com/njh/perl-net-sdp.git perl-net-sdp
     echo "Installing perl-net-sdp"
@@ -223,6 +224,7 @@ function installAirPlay {
     sudo chmod a+x shairport
     sudo update-rc.d shairport defaults
     sudo sed -i 's/-w $PIDFILE"/-w $PIDFILE -a '$AIRPLAYNAME'"/' /etc/init.d/shairport
+    popd
 }
 
 if [ "$AIRPLAY" = "true" ]; then
@@ -322,12 +324,14 @@ function configureHomebridge {
     apt-get install -y nodejs
     apt-get install -y libavahi-compat-libdnssd-dev
     npm install -g --unsafe-perm homebridge hap-nodejs node-gyp
+    pushd .
     cd /usr/lib/node_modules/homebridge/
     npm install --unsafe-perm bignum
     cd /usr/lib/node_modules/hap-nodejs/node_modules/mdns
     node-gyp BUILDTYPE=Release rebuild
     npm install -g homebridge-aqara
     npm install -g homebridge-yeelight
+    popd
     cp ../configs/homebridge/homebridge /etc/default/
     cp ../configs/homebridge/homebridge.service /etc/systemd/system/
     useradd --system homebridge
