@@ -317,7 +317,7 @@ fi
 
 # Configure Homebridge
 function configureHomebridge {
-    echo "Home Bridge is being installed...(warning.. this script hasn't been tested...any problem occurs, go to github )"
+    echo "Home Bridge is being installed..."
     echo "Currently only working on Jessie"
     apt-get install -y git make
     curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
@@ -331,12 +331,14 @@ function configureHomebridge {
     node-gyp BUILDTYPE=Release rebuild
     npm install -g homebridge-aqara
     npm install -g homebridge-yeelight
+    npm install -g homebridge-miio
     popd
     cp ../configs/homebridge/homebridge /etc/default/
     cp ../configs/homebridge/homebridge.service /etc/systemd/system/
     useradd --system homebridge
     mkdir /var/lib/homebridge
     cp ../configs/homebridge/config.json /var/lib/homebridge/
+    cp -r ../configs/homebridge/persist /var/lib/homebridge/
     chmod -R 777 /var/lib/homebridge
     systemctl daemon-reload
     systemctl enable homebridge

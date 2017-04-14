@@ -18,6 +18,12 @@
       {
          "platform":"yeelight",
          "name":"yeelight"
+      },
+      {
+	 "platform" : "XiaomiMiio",
+	 "name" : "XiaomiMiio",
+	 "pollChanges": true,
+	 "pollInterval": 15
       }
    ]
 }
