@@ -165,6 +165,7 @@ yesOrNo "enable WiFi auto-reconnect" "${WIFI}"
 
 
 apt-get update
+cp ../configs/.bash_aliases ~/.
 
 # Configure automatic daily reboot
 function automaticReboot {
@@ -360,7 +361,7 @@ fi
 function configureHomebridge {
     echo "####### Home Bridge is being installed... #######"
     echo "Currently only working on Jessie"
-    push .
+    pushd .
     cd /usr/lib
     apt-get install -y libavahi-compat-libdnssd-dev
     npm install -g --unsafe-perm homebridge hap-nodejs node-gyp
@@ -378,6 +379,7 @@ function configureHomebridge {
     mkdir /var/lib/homebridge
     cp ../configs/homebridge/config.json /var/lib/homebridge/
     cp -r ../configs/homebridge/persist /var/lib/homebridge/
+    cp -r ../configs/homebridge/accessories/ /var/lib/homebridge/
     chmod -R 777 /var/lib/homebridge
     systemctl daemon-reload
     systemctl enable homebridge
