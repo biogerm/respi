@@ -270,6 +270,7 @@ function configurePPTP {
     echo "ms-dns 8.8.8.8" | sudo tee -a /etc/ppp/pptpd-options
     echo "ms-dns 8.8.4.4" | sudo tee -a /etc/ppp/pptpd-options
     sudo /etc/init.d/pptpd restart
+    systemctl enable pptpd
     echo "PPTP ready"
 }
 
@@ -295,6 +296,26 @@ if [ "$DDNS" = "true" ]; then
     configureDDNS
 fi
 
+# Configure NodeJS
+if [ "$LIRC" = "true" ] || [ "$HOMEBRIDGE" = "true" ]; then
+    echo "####### Configuring NodeJS for LIRC or HomeBridge #######"
+    apt-get install -y git make
+    if [ "`cat /proc/cpuinfo | grep -i armv6 | wc -l`" = 0 ]; then
+        echo "Installing node js for armv7 or above"
+        curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+        apt-get install -y nodejs npm
+    else
+        echo "Installing node js for armv6"
+        wget https://nodejs.org/dist/v6.11.1/node-v6.11.1-linux-armv6l.tar.xz
+        tar -xf node-v6.11.1-linux-armv6l.tar.xz
+        cd node-v6.11.1-linux-armv6l/
+        sudo cp -R * /usr/local/
+        sudo rm /usr/local/CHANGELOG.md
+        sudo rm /usr/local/LICENSE
+        sudo rm /usr/local/README.md
+        export PATH=$PATH:/usr/local/bin
+    fi
+fi
 
 # Configure LIRC
 function configureLIRC {
@@ -339,9 +360,6 @@ fi
 function configureHomebridge {
     echo "####### Home Bridge is being installed... #######"
     echo "Currently only working on Jessie"
-    apt-get install -y git make npm
-    curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
-    apt-get install -y nodejs
     apt-get install -y libavahi-compat-libdnssd-dev
     npm install -g --unsafe-perm homebridge hap-nodejs node-gyp
     pushd .
