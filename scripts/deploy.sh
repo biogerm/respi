@@ -236,7 +236,7 @@ fi
 function configurePPTP {
     # Install PPTPD
     sudo apt-get -q -y install pptpd
-    
+
     # Enable IPv4 port forwarding
     sudo sed -i -r 's/^\s*#(net\.ipv4\.ip_forward=1.*)/\1/' /etc/sysctl.conf
     # Reload the config file to have the change take effect immediately.
@@ -246,10 +246,10 @@ function configurePPTP {
     ##sudo -i iptables --table nat --append POSTROUTING --out-interface $OUTIF --jump MASQUERADE
     # Enable NAT on boot from the rc.local script.
     CMD="iptables --table nat --append POSTROUTING --out-interface $OUTIF --jump MASQUERADE"
-    
+
     sudo -i $CMD
     sudo sed -i "\$i$CMD\n" /etc/rc.local
-    
+
     echo "biogerm pptpd $KEY *" | sudo tee -a /etc/ppp/chap-secrets
     echo "ms-dns 8.8.8.8" | sudo tee -a /etc/ppp/pptpd-options
     echo "ms-dns 8.8.4.4" | sudo tee -a /etc/ppp/pptpd-options
@@ -265,11 +265,11 @@ fi
 # Configure DDNS
 function configureDDNS {
     # Enable report DDNS on startup
-    CMD="`pwd`/report-ddns.sh >> /home/pi/reportddns.log &"
+    CMD="`pwd`/report-public-ip.sh >> /home/pi/reportddns.log &"
     sudo sed -i "\$i$CMD\n" /etc/rc.local
 
     # Replace keys in the DDNS script
-    sed -i "s/{PASSWORD}/$DDNS_KEY/g" report-ddns.sh
+    sed -i "s/{PASSWORD}/$DDNS_KEY/g" report-public-ip.sh
 }
 
 if [ "$DDNS" = "true" ]; then
@@ -309,7 +309,7 @@ function configureLIRC {
   echo "30 11 * * 1-5 /home/pi/git/respi/scripts/robot-control.sh" >> mycron
   crontab -u pi mycron
   rm mycron
-} 
+}
 
 if [ "$LIRC" = "true" ]; then
     configureLIRC
