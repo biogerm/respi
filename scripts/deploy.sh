@@ -164,10 +164,11 @@ yesOrNo "enable WiFi auto-reconnect" "${WIFI}"
 
 
 
-
+apt-get update
 
 # Configure automatic daily reboot
 function automaticReboot {
+    echo "####### Enabling Automatic Reboot #######"
     crontab -l > mycron
     #filename="mycron"
     echo "0 14 * * * reboot" >> mycron
@@ -182,6 +183,7 @@ fi
 
 # Configure locale
 function configureLocale {
+    echo "####### Configuring Locale #######"
     # install Locale
     sudo locale-gen en_US.UTF-8
     sudo locale-gen en en_US en_US.UTF-8
@@ -199,6 +201,7 @@ fi
 
 # Install Emacs
 function installEmacs {
+    echo "####### Installing EMacs #######"
     sudo apt-get -q -y install emacs23
     cp ../configs/.emacs /home/pi/
     CMD="cp `pwd`/../configs/.emacs /home/pi/"
@@ -212,7 +215,7 @@ fi
 
 # Install AirPlayer
 function installAirPlay {
-    echo "Enabling AirPlay"
+    echo "####### Enabling AirPlay #######"
     sudo apt-get -q -y install git libao-dev libssl-dev libcrypt-openssl-rsa-perl libio-socket-inet6-perl libwww-perl avahi-utils libmodule-build-perl
     echo "Cloning perl-net-sdp repo"
     pushd .
@@ -246,6 +249,7 @@ fi
 
 # Configure PPTP VPN
 function configurePPTP {
+    echo "####### Enabling PPTP #######"
     # Install PPTPD
     sudo apt-get -q -y install pptpd
 
@@ -276,6 +280,7 @@ fi
 
 # Configure DDNS
 function configureDDNS {
+    echo "####### Enabling DDNS #######"
     # Enable report DDNS on startup
     CMD="`pwd`/report-public-ip.sh >> /home/pi/reportddns.log &"
     sudo sed -i "\$i$CMD\n" /etc/rc.local
@@ -293,6 +298,7 @@ fi
 
 # Configure LIRC
 function configureLIRC {
+  echo "####### Enabling LIRC #######"
   sudo apt-get -y install lirc
 
   # modules
@@ -331,9 +337,9 @@ fi
 
 # Configure Homebridge
 function configureHomebridge {
-    echo "Home Bridge is being installed..."
+    echo "####### Home Bridge is being installed... #######"
     echo "Currently only working on Jessie"
-    apt-get install -y git make
+    apt-get install -y git make npm
     curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
     apt-get install -y nodejs
     apt-get install -y libavahi-compat-libdnssd-dev
@@ -365,6 +371,7 @@ fi
 
 # Enable Wifi Auto-reconnect
 function configureWifiAutoReconnect {
+    echo "####### Enabling WiFi Auto Reconnect #######"
     CMD="`pwd`/network-monitor.sh >> /home/pi/networkMonitor.log &"
     sudo sed -i "\$i$CMD\n" /etc/rc.local
 }
