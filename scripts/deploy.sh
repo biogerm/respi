@@ -308,12 +308,12 @@ if [ "$LIRC" = "true" ] || [ "$HOMEBRIDGE" = "true" ]; then
         echo "Installing node js for armv6"
         wget https://nodejs.org/dist/v6.11.1/node-v6.11.1-linux-armv6l.tar.xz
         tar -xf node-v6.11.1-linux-armv6l.tar.xz
-        cd node-v6.11.1-linux-armv6l/
-        sudo cp -R * /usr/local/
-        sudo rm /usr/local/CHANGELOG.md
-        sudo rm /usr/local/LICENSE
-        sudo rm /usr/local/README.md
+        cp -R node-v6.11.1-linux-armv6l/* /usr/
+        rm /usr/CHANGELOG.md
+        rm /usr/LICENSE
+        rm /usr/README.md
         export PATH=$PATH:/usr/local/bin
+	export NODE_PATH=/usr/lib/nodejs:/usr/lib/node_modules:/usr/share/javascript
     fi
 fi
 
