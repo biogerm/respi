@@ -329,7 +329,7 @@ function configureHomebridge {
     npm install --unsafe-perm bignum
     cd /usr/lib/node_modules/hap-nodejs/node_modules/mdns
     node-gyp BUILDTYPE=Release rebuild
-    npm install -g homebridge-aqara
+    npm install -g homebridge-mi-aqara
     npm install -g homebridge-yeelight
     npm install -g homebridge-miio
     popd

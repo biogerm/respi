@@ -7,13 +7,96 @@
    },
    "platforms":[  
       {  
-         "platform":"AqaraPlatform",
+         "platform":"MiAqaraPlatform",
          "sid":[  
             "f0b429cc6bef"
          ],
          "password":[  
             "gk1fkp4q40qrxi1k"
-         ]
+         ],
+         "defaultValue": {
+            "158d00013e2e39": {
+               "Plug": {
+                  "name": "Lava Lamp"
+               }
+            },
+            "158d000111e932": {
+               "Mag": {
+                  "name": "Main Entrance"
+               }
+            },
+            "158d00012d8f47": {
+               "Mag": {
+                  "name": "Balcony Door"
+               }
+            },
+            "158d00012d8e0f": {
+               "Mag": {
+                  "name": "Changing Room"
+               }
+            },
+            "158d0001581513": {
+               "Hum": {
+                  "name": "Thermostat - Humidity"
+               },
+               "Tem": {
+                  "name": "Thermostat -  Temperature"
+               }
+            },
+            "158d000128bc6e": {
+               "Mot": {
+                  "name": "Motion Sensor"
+               }
+            },
+            "f0b429cc6bef": {
+               "GW_LS": {
+                  "name": "Ambient Light Sensor"
+               },
+               "GW_Light": {
+                  "name": "Gateway Light"
+               }
+            },
+            "158d00010f06ca": {
+               "MS_Flip90": {
+                  "name": "A Flip 90"
+               },
+               "MS_Flip180": {
+                  "name": "A Flip 180"
+               },
+               "MS_Move": {
+                  "name": "A Push"
+               },
+               "MS_TapTwice": {
+                  "name": "A Tap x2"
+               },
+               "MS_ShakeAir": {
+                  "name": "A Shake"
+               },
+               "MS_Rotate": {
+                  "name": "A Rotation"
+               }
+            },
+            "158d000113ff53": {
+               "MS_Flip90": {
+                  "name": "B Flip 90"
+               },
+               "MS_Flip180": {
+                  "name": "B Flip 180"
+               },
+               "MS_Move": {
+                  "name": "B Push"
+               },
+               "MS_TapTwice": {
+                  "name": "B Tap x2"
+               },
+               "MS_ShakeAir": {
+                  "name": "B Shake"
+               },
+               "MS_Rotate": {
+                  "name": "B Rotation"
+               } 
+            }
+         }
       },
       {
          "platform":"yeelight",
