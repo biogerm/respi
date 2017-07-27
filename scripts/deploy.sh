@@ -89,6 +89,18 @@ while [ true ]; do
     echo "Would you like to setup DDNS? (Y/N)"
     read DDNS_YES
     if [ "$DDNS_YES" = "Y" ]  || [ "$DDNS_YES" = "y" ]; then
+             echo "Please input DDNS URL:"
+             read DDNS_URL
+             if [ "$DDNS_URL" = "" ]; then
+               echo "Empty domain URL, try again"
+               continue
+             fi
+	     echo "Please input DDNS username:"
+	     read DDNS_USER
+             if [ "$DDNS_USER" = "" ]; then
+               echo "Empty username, try again"
+	       continue
+             fi
 	     echo "Please input DDNS password:"
 	     read DDNS_KEY
 	     if [ "$DDNS_KEY" = "" ]; then
@@ -99,7 +111,7 @@ while [ true ]; do
 	     fi
     elif [ "$DDNS_YES" = "N" ]  || [ "$DDNS_YES" = "n" ]; then
         DDNS="false"
-	       break
+	break
     else
         echo "Please type Y or N"
     fi
@@ -269,6 +281,8 @@ function configureDDNS {
     sudo sed -i "\$i$CMD\n" /etc/rc.local
 
     # Replace keys in the DDNS script
+    sed -i "s/{DDNS_DOMAIN}/$DDNS_URL/g" report-public-ip.sh
+    sed -i "s/{DDNS_USER}/$DDNS_USER/g" report-public-ip.sh
     sed -i "s/{PASSWORD}/$DDNS_KEY/g" report-public-ip.sh
 }
 
