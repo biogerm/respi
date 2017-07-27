@@ -360,9 +360,10 @@ fi
 function configureHomebridge {
     echo "####### Home Bridge is being installed... #######"
     echo "Currently only working on Jessie"
+    push .
+    cd /usr/lib
     apt-get install -y libavahi-compat-libdnssd-dev
     npm install -g --unsafe-perm homebridge hap-nodejs node-gyp
-    pushd .
     cd /usr/lib/node_modules/homebridge/
     npm install --unsafe-perm bignum
     cd /usr/lib/node_modules/hap-nodejs/node_modules/mdns
