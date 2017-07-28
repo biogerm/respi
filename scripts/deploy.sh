@@ -37,6 +37,12 @@ function yesOrNo {
 	fi
     done
 }
+PWD="`pwd`"
+if [[ "$PWD" != *"respi/scripts" ]]; then
+    error "This script has to be executed at where it locates."
+    exit 1
+fi
+
 
 # Check if the script is executed as sudoer
 if [[ $EUID -ne 0 ]]; then
@@ -307,9 +313,9 @@ if [ "$LIRC" = "true" ] || [ "$HOMEBRIDGE" = "true" ]; then
         apt-get install -y nodejs npm
     else
         echo "Installing node js for armv6"
-        wget https://nodejs.org/dist/v6.11.1/node-v6.11.1-linux-armv6l.tar.xz
-        tar -xf node-v6.11.1-linux-armv6l.tar.xz
-        cp -R node-v6.11.1-linux-armv6l/* /usr/
+        wget https://nodejs.org/download/release/v8.2.0/node-v8.2.0-linux-armv6l.tar.xz
+        tar -xf node-v8.2.0-linux-armv6l.tar.xz
+        cp -R node-v8.2.0-linux-armv6l/* /usr/
         rm /usr/CHANGELOG.md
         rm /usr/LICENSE
         rm /usr/README.md
@@ -400,3 +406,9 @@ function configureWifiAutoReconnect {
 if [ "$WIFI" = "true" ]; then
     configureWifiAutoReconnect
 fi
+
+CMD="GatewayPorts yes"
+sudo sed -i "\$i$CMD\n" /etc/ssh/sshd_config
+sudo service ssh restart
+echo "SSH remote port forwarding is enabled"
+
