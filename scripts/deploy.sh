@@ -313,9 +313,9 @@ if [ "$LIRC" = "true" ] || [ "$HOMEBRIDGE" = "true" ]; then
         apt-get install -y nodejs npm
     else
         echo "Installing node js for armv6"
-        wget https://nodejs.org/download/release/v8.2.0/node-v8.2.0-linux-armv6l.tar.xz
-        tar -xf node-v8.2.0-linux-armv6l.tar.xz
-        cp -R node-v8.2.0-linux-armv6l/* /usr/
+        wget https://nodejs.org/download/release/v7.2.0/node-v7.2.0-linux-armv6l.tar.xz
+        tar -xf node-v7.2.0-linux-armv6l.tar.xz
+        cp -R node-v7.2.0-linux-armv6l/* /usr/
         rm /usr/CHANGELOG.md
         rm /usr/LICENSE
         rm /usr/README.md
@@ -370,14 +370,15 @@ function configureHomebridge {
     pushd .
     cd /usr/lib
     apt-get install -y libavahi-compat-libdnssd-dev
-    npm install -g --unsafe-perm homebridge hap-nodejs node-gyp
+    npm install -g --unsafe-perm homebridge@0.4.16 hap-nodejs@0.4.21 node-gyp@3.5.0
     cd /usr/lib/node_modules/homebridge/
-    npm install --unsafe-perm bignum
+    npm install --unsafe-perm bignum@0.12.5
     cd /usr/lib/node_modules/hap-nodejs/node_modules/mdns
     node-gyp BUILDTYPE=Release rebuild
-    npm install -g homebridge-mi-aqara
-    npm install -g homebridge-yeelight
-    npm install -g homebridge-miio
+    cd /usr/lib/node_modules/homebridge/
+    npm install -g homebridge-mi-aqara@0.4.1
+    npm install -g homebridge-yeelight@0.0.14
+    npm install -g homebridge-miio@0.2.0
     popd
     cp ../configs/homebridge/homebridge /etc/default/
     cp ../configs/homebridge/homebridge.service /etc/systemd/system/
