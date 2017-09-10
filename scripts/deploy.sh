@@ -369,7 +369,7 @@ function configureHomebridge {
     echo "Currently only working on Jessie"
     pushd .
     cd /usr/lib
-    apt-get install -y libavahi-compat-libdnssd-dev
+    apt-get install -y libavahi-compat-libdnssd-dev samba-common sambo-common-bin etherwake
     npm install -g --unsafe-perm homebridge@0.4.16 hap-nodejs@0.4.21 node-gyp@3.5.0
     cd /usr/lib/node_modules/homebridge/
     npm install --unsafe-perm bignum@0.12.5
@@ -379,6 +379,7 @@ function configureHomebridge {
     npm install -g homebridge-mi-aqara@0.4.1
     npm install -g homebridge-yeelight@0.0.14
     npm install -g homebridge-miio@0.2.0
+    npm install -g homebridge-cmdswitch2
     popd
     cp ../configs/homebridge/homebridge /etc/default/
     cp ../configs/homebridge/homebridge.service /etc/systemd/system/
