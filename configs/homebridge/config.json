@@ -107,6 +107,26 @@
 	 "name" : "XiaomiMiio",
 	 "pollChanges": true,
 	 "pollInterval": 15
-      }
+      },
+      {
+           "platform": "cmdSwitch2",
+	   "name": "CMD Switch 2",
+	   "switches": [{
+	       "name" : "PC",
+	       "on_cmd": "wakeonlan A0:A8:CD:88:88:A3",
+	       "off_cmd": "net rpc shutdown -I XXX.XXX.XXX.XXX -U user%password",
+	       "state_cmd": "ping -c 2 -W 1 192.168.0.100 | grep -i '2 received'",
+	       "polling": true,
+	       "interval": 20,
+	       "timeout": 20
+	   }, {
+	       "name" : "Vacuum Cleaner",
+	       "on_cmd": "curl -X POST http://192.168.0.181:3000/remotes/PowerBotVR/KEY_AUTO",
+	       "off_cmd": "curl -X POST http://192.168.0.181:3000/remotes/PowerBotVR/KEY_RECHARGE",
+	       "manufacturer": "Samsung",
+	       "model": "PowerBot VR9000",
+	       "serial": "1233211234567"
+	   }]
+       }
    ]
 }
