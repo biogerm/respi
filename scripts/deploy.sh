@@ -43,7 +43,6 @@ if [[ "$PWD" != *"respi/scripts" ]]; then
     exit 1
 fi
 
-
 # Check if the script is executed as sudoer
 if [[ $EUID -ne 0 ]]; then
     error "This script should be run using sudo or as the root user"
@@ -166,12 +165,12 @@ yesOrNo "enable WiFi auto-reconnect" "${WIFI}"
 
 
 
-
-
-
+####################
+# Execution starts #
+####################
 
 apt-get update
-cp ../configs/.bash_aliases ~/.
+cp ../configs/.bash_aliases /home/pi/.
 
 # Configure automatic daily reboot
 function automaticReboot {
@@ -209,7 +208,7 @@ fi
 # Install Emacs
 function installEmacs {
     echo "####### Installing EMacs #######"
-    sudo apt-get -q -y install emacs23
+    sudo apt-get -q -y install emacs
     cp ../configs/.emacs /home/pi/
     CMD="cp `pwd`/../configs/.emacs /home/pi/"
     $CMD
