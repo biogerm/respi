@@ -309,7 +309,8 @@ if [ "$LIRC" = "true" ] || [ "$HOMEBRIDGE" = "true" ]; then
     if [ "`cat /proc/cpuinfo | grep -i armv6 | wc -l`" = 0 ]; then
         echo "Installing node js for armv7 or above"
         curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
-        apt-get install -y nodejs npm
+	apt-get install -y npm
+        apt-get install -y nodejs
     else
         echo "Installing node js for armv6"
         wget https://nodejs.org/download/release/v7.2.0/node-v7.2.0-linux-armv6l.tar.xz
