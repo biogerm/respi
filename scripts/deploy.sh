@@ -308,7 +308,7 @@ if [ "$LIRC" = "true" ] || [ "$HOMEBRIDGE" = "true" ]; then
     apt-get install -y git make
     if [ "`cat /proc/cpuinfo | grep -i armv6 | wc -l`" = 0 ]; then
         echo "Installing node js for armv7 or above"
-        curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+        curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
 	apt-get install -y npm
         apt-get install -y nodejs
     else
@@ -369,21 +369,24 @@ function configureHomebridge {
     echo "Currently only working on Jessie"
     pushd .
     cd /usr/lib
-    apt-get install -y libavahi-compat-libdnssd-dev samba-common sambo-common-bin etherwake
-    npm install -g --unsafe-perm homebridge@0.4.16 hap-nodejs@0.4.21 node-gyp@3.5.0
+    apt-get install -y libavahi-compat-libdnssd-dev samba-common samba-common-bin etherwake
+    npm install -g --unsafe-perm homebridge@0.4.43 hap-nodejs@0.4.46 node-gyp@3.7.0
     cd /usr/lib/node_modules/homebridge/
     npm install --unsafe-perm bignum@0.12.5
+    npm install --unsafe-perm mdns@2.4.0
     cd /usr/lib/node_modules/hap-nodejs/node_modules/mdns
     node-gyp BUILDTYPE=Release rebuild
     cd /usr/lib/node_modules/homebridge/
-    npm install -g homebridge-mi-aqara@0.4.1
-    npm install -g homebridge-yeelight@0.0.14
+    npm install -g homebridge-mi-aqara@0.6.9
+    npm install -g homebridge-yeelight@0.0.18
     npm install -g homebridge-miio@0.2.0
     npm install -g homebridge-cmdswitch2
     popd
     cp ../configs/homebridge/homebridge /etc/default/
     cp ../configs/homebridge/homebridge.service /etc/systemd/system/
     useradd --system homebridge
+    adduser homebridge gpio
+    sudo chown root.gpio /dev/mem && sudo chmod g+rw /dev/mem
     mkdir /var/lib/homebridge
     cp ../configs/homebridge/config.json /var/lib/homebridge/
     cp -r ../configs/homebridge/persist /var/lib/homebridge/

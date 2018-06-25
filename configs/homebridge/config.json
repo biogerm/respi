@@ -1,132 +1,211 @@
 {  
-   "bridge":{  
-      "name":"Homebridge",
-      "username":"F0:B4:29:CC:6B:EF",
-      "port":51826,
-      "pin":"031-45-154"
-   },
-   "platforms":[  
-      {  
-         "platform":"MiAqaraPlatform",
-         "sid":[  
-            "f0b429cc6bef"
-         ],
-         "password":[  
-            "gk1fkp4q40qrxi1k"
-         ],
-         "defaultValue": {
-            "158d00013e2e39": {
-               "Plug": {
-                  "name": "Lava Lamp"
-               }
-            },
-            "158d000111e932": {
-               "Mag": {
-                  "name": "Main Entrance"
-               }
-            },
-            "158d00012d8f47": {
-               "Mag": {
-                  "name": "Balcony Door"
-               }
-            },
-            "158d00012d8e0f": {
-               "Mag": {
-                  "name": "Changing Room"
-               }
-            },
-            "158d0001581513": {
-               "Hum": {
-                  "name": "Thermostat - Humidity"
-               },
-               "Tem": {
-                  "name": "Thermostat -  Temperature"
-               }
-            },
-            "158d000128bc6e": {
-               "Mot": {
-                  "name": "Motion Sensor"
-               }
-            },
-            "f0b429cc6bef": {
-               "GW_LS": {
-                  "name": "Ambient Light Sensor"
-               },
-               "GW_Light": {
-                  "name": "Gateway Light"
-               }
-            },
-            "158d00010f06ca": {
-               "MS_Flip90": {
-                  "name": "A Flip 90"
-               },
-               "MS_Flip180": {
-                  "name": "A Flip 180"
-               },
-               "MS_Move": {
-                  "name": "A Push"
-               },
-               "MS_TapTwice": {
-                  "name": "A Tap x2"
-               },
-               "MS_ShakeAir": {
-                  "name": "A Shake"
-               },
-               "MS_Rotate": {
-                  "name": "A Rotation"
-               }
-            },
-            "158d000113ff53": {
-               "MS_Flip90": {
-                  "name": "B Flip 90"
-               },
-               "MS_Flip180": {
-                  "name": "B Flip 180"
-               },
-               "MS_Move": {
-                  "name": "B Push"
-               },
-               "MS_TapTwice": {
-                  "name": "B Tap x2"
-               },
-               "MS_ShakeAir": {
-                  "name": "B Shake"
-               },
-               "MS_Rotate": {
-                  "name": "B Rotation"
-               } 
+    "bridge":{  
+	"name":"Homebridge",
+	"username":"B8:27:EB:7F:2F:CB",
+	"port":51826,
+	"pin":"021-45-154"
+    },
+    "platforms":[  
+	{  
+            "platform":"MiAqaraPlatform",
+	    "gateways": {
+		"f0b429cc6bef":"gk1fkp4q40qrxi1k"
+	    },
+            "defaultValue": {
+		"158d00013e2e39": {
+		    "PlugBase_Outlet": {
+			"name": "Lava Lamp"
+		    }
+		},
+		"158d0001832661": {
+		    "PlugBase_Outlet": {
+			"name": "Free Outlet"
+		    }
+		},
+		"158d000111e932": {
+		    "ContactSensor_ContactSensor": {
+			"name": "Main Entrance"
+		    }
+		},
+		"158d00012d8f47": {
+		    "ContactSensor_ContactSensor": {
+			"name": "Balcony Door"
+		    }
+		},
+		"158d00012d8e0f": {
+		    "ContactSensor_ContactSensor": {
+			"name": "Changing Room"
+		    }
+		},
+		"158d0001581513": {
+		    "TemperatureAndHumiditySensor_HumiditySensor": {
+			"name": "Thermostat - Humidity"
+		    },
+		    "TemperatureAndHumiditySensor_TemperatureSensor": {
+			"name": "Thermostat -  Temperature"
+		    }
+		},
+		"158d000128bc6e": {
+		    "MotionSensor_MotionSensor": {
+			"name": "Living Room Motion Sensor"
+		    }
+		},
+		"158d00016d5b92": {
+		    "MotionSensor_MotionSensor": {
+			"name": "Bedroom Motion Sensor"
+		    }
+		},
+		"158d00016c10ad": {
+		    "MotionSensor_MotionSensor": {
+			"name": "Kitchen Motion Sensor"
+		    }
+		},
+		"158d00015b1501": {
+		    "SmokeDetector_SmokeSensor": {
+			"name": "Smoke"
+		    }
+		},
+		"f0b429cc6bef": {
+		    "Gateway_LightSensor": {
+			"name": "Ambient Light Sensor"
+		    },
+		    "Gateway_Lightbulb": {
+			"name": "Gateway Light"
+		    },
+		    "Gateway_Switch_JoinPermission": {
+			"name": "Add New Device",
+			"disable": true
+		    }
+		},
+		"158d00010f06ca": {
+		    "MagicSquare_StatelessProgrammableSwitch_Flip90": {
+			"name": "LRoom Flip 90"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_Flip180": {
+			"name": "LRoom Flip 180"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_Move": {
+			"name": "LRoom Push"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_TapTwice": {
+			"name": "LRoom Tap x2"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_ShakeAir": {
+			"name": "LRoom Shake"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_Rotate": {
+			"name": "LRoom Rotation"
+		    },
+		    "MagicSquare_Switch_VirtualFlip90": {
+			"name": "LRoom VFlip 90"
+		    },
+		    "MagicSquare_Switch_VirtualFlip180": {
+			"name": "LRoom VFlip 180"
+		    },
+		    "MagicSquare_Switch_VirtualMove": {
+			"name":"LRoom VPush"
+		    },
+		    "MagicSquare_Switch_VirtualTapTwice": {
+			"name":"LRoom VTap x2"
+		    },
+		    "MagicSquare_Switch_VirtualShakeAir": {
+			"name":"LRoom VShake"
+		    }
+		},
+		"158d000113ff53": {
+		    "MagicSquare_StatelessProgrammableSwitch_Flip90": {
+			"name": "BRoom Flip 90"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_Flip180": {
+			"name": "BRoom Flip 180"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_Move": {
+			"name": "BRoom Push"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_TapTwice": {
+			"name": "BRoom Tap x2"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_ShakeAir": {
+			"name": "BRoom Shake"
+		    },
+		    "MagicSquare_StatelessProgrammableSwitch_Rotate": {
+			"name": "BRoom Rotation"
+		    },
+		    "MagicSquare_Switch_VirtualFlip90": {
+			"name": "BRoom VFlip 90"
+		    },
+		    "MagicSquare_Switch_VirtualFlip180": {
+			"name": "BRoom VFlip 180"
+		    },
+		    "MagicSquare_Switch_VirtualMove": {
+			"name":"BRoom VPush"
+		    },
+		    "MagicSquare_Switch_VirtualTapTwice": {
+			"name":"BRoom VTap x2"
+		    },
+		    "MagicSquare_Switch_VirtualShakeAir": {
+			"name":"BRoom VShake"
+		    }
+		}
             }
-         }
-      },
-      {
-         "platform":"yeelight",
-         "name":"yeelight"
-      },
-      {
-	 "platform" : "XiaomiMiio",
-	 "name" : "XiaomiMiio",
-	 "pollChanges": true,
-	 "pollInterval": 15
-      },
-      {
-           "platform": "cmdSwitch2",
-	   "name": "CMD Switch 2",
-	   "switches": [{
-	       "name" : "PC",
-	       "on_cmd": "wakeonlan A0:A8:CD:88:88:A3",
-	       "off_cmd": "net rpc shutdown -I XXX.XXX.XXX.XXX -U user%password",
-	       "state_cmd": "ping -c 2 -W 1 192.168.0.100 | grep -i '2 received'",
-	       "polling": true,
-	       "interval": 20,
-	       "timeout": 20
-	   }, {
-	       "name" : "Vacuum Cleaner",
-	       "on_cmd": "curl -X POST http://192.168.0.181:3000/remotes/PowerBotVR/KEY_AUTO",
-	       "off_cmd": "curl -X POST http://192.168.0.181:3000/remotes/PowerBotVR/KEY_RECHARGE",
-	       "manufacturer": "Samsung",
-	       "model": "PowerBot VR9000",
-	       "serial": "1233211234567"
-	   }]
-       }
-   ]
+	},
+	{
+	    "platform" : "XiaomiMiio",
+	    "name" : "XiaomiMiio",
+	    "pollChanges": true,
+	    "pollInterval": 15
+	},
+	{
+            "platform": "cmdSwitch2",
+	    "name": "CMD Switch 2",
+	    "switches": [{
+		"name" : "PC",
+		"on_cmd": "wakeonlan A0:A8:CD:88:88:A3",
+		"off_cmd": "wakeonlan A3:88:88:CD:A8:A0 192.168.255.255",
+		"state_cmd": "ping -c 2 -W 1 192.168.0.100 | grep -i '2 received'",
+		"polling": true,
+		"interval": 20,
+		"timeout": 20
+	    }, {
+		"name" : "Vacuum Cleaner",
+		"on_cmd": "curl -X POST http://192.168.0.181:3000/remotes/PowerBotVR/KEY_AUTO",
+		"off_cmd": "curl -X POST http://192.168.0.181:3000/remotes/PowerBotVR/KEY_RECHARGE",
+		"manufacturer": "Samsung",
+		"model": "PowerBot VR9000",
+		"serial": "1233211234567"
+	    }, {
+		"name" : "Living Room Ceiling",
+		"on_cmd": "python /home/pi/git/respi/scripts/switch433/livingroom.py a",
+		"off_cmd": "python /home/pi/git/respi/scripts/switch433/livingroom.py a",
+		"manufacturer": "Aliexpress",
+		"model": "Remote Controlled Switch",
+		"serial": "1233211234566"
+	    }, {
+		"name" : "Entrance Ceiling Lamp",
+		"on_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py a",
+		"off_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py a",
+		"manufacturer": "Aliexpress",
+		"model": "2 in 1",
+		"serial": "1233211234567"
+	    }, {
+		"name" : "Aisle Ceiling Lamp",
+		"on_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py b",
+		"off_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py b",
+		"manufacturer": "Aliexpress",
+		"model": "2 in 1",
+		"serial": "1233211234567"
+	    }, {
+		"name" : "All Ceiling Lamp",
+		"on_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py all_off",
+		"off_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py all_off",
+		"manufacturer": "Aliexpress",
+		"model": "2 in 1",
+		"serial": "1233211234567"
+	    }]
+	},
+	{
+	    "platform":"yeelight",
+	    "name":"yeelight"
+	}    
+    ]
 }

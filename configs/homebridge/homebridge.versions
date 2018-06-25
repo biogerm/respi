@@ -1,0 +1,24 @@
+pi@LivingRoom:~/git/piscope $ npm list -g --depth=0
+/usr/lib
+├── hap-nodejs@0.4.21
+├── homebridge@0.4.43
+├── homebridge-cmdswitch2@0.2.10
+├── homebridge-mi-aqara@0.6.8
+├── homebridge-miio@0.2.0
+├── homebridge-yeelight@0.0.18
+├── miio@0.15.6
+├── node-gyp@3.5.0
+└── npm@5.6.0
+
+
+/usr/lib
+├── homebridge@0.4.43
+├── homebridge-cmdswitch2@0.2.10
+├── homebridge-mi-aqara@0.6.9
+├── homebridge-miio@0.2.0
+├── homebridge-yeelight@0.0.18
+├── miio@0.15.6
+├── node-gyp@3.7.0
+└── npm@6.1.0
+
+
