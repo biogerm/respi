@@ -19,7 +19,7 @@
 		},
 		"158d0001832661": {
 		    "PlugBase_Outlet": {
-			"name": "Free Outlet"
+			"name": "NAS"
 		    }
 		},
 		"158d000111e932": {
@@ -159,9 +159,33 @@
             "platform": "cmdSwitch2",
 	    "name": "CMD Switch 2",
 	    "switches": [{
+		"name": "KitchenPi",
+		"on_cmd": "ssh pi@192.168.0.181 'sudo reboot'",
+                "off_cmd": "ssh pi@192.168.0.181 'sudo shutdown now'",
+                "state_cmd": "ping -c 2 -W 1 192.168.0.181 | grep -i '2 received'",
+                "polling": true,
+                "interval": 20,
+                "timeout": 20
+	    }, {
+                "name": "KitchenRouter",
+                "on_cmd": "ssh biogerm@192.168.0.172 'uptime'",
+                "off_cmd": "ssh biogerm@192.168.0.172 'reboot'",
+                "state_cmd": "ping -c 2 -W 1 192.168.0.172 | grep -i '2 received'",
+                "polling": true,
+                "interval": 20,
+                "timeout": 20
+	    }, {
+                "name": "MainRouter",
+                "on_cmd": "ssh biogerm@192.168.0.1 'uptime'",
+                "off_cmd": "ssh biogerm@192.168.0.1 'reboot'",
+                "state_cmd": "ping -c 2 -W 1 192.168.0.1 | grep -i '2 received'",
+                "polling": true,
+                "interval": 20,
+                "timeout": 20
+	    }, {
 		"name" : "PC",
 		"on_cmd": "wakeonlan A0:A8:CD:88:88:A3",
-		"off_cmd": "wakeonlan A3:88:88:CD:A8:A0 192.168.255.255",
+		"off_cmd": "wget http://192.168.0.100:8009/sleep",
 		"state_cmd": "ping -c 2 -W 1 192.168.0.100 | grep -i '2 received'",
 		"polling": true,
 		"interval": 20,
