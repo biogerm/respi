@@ -5,6 +5,21 @@
 	"port":51826,
 	"pin":"021-45-154"
     },
+    "accessories": [
+	{
+	    "accessory": "XiaomiRoborockVacuum",
+	    "name": "BB8",
+	    "ip": "192.168.0.226",
+	    "token": "734d69664865446e4146516531516932",
+	    "pause": false,
+	    "dock": true,
+	    "dustCollection": true,
+	    "waterBox": true,
+	    "findMe": true,
+	    "findMeWord": "where are you",
+	    "cleanword": "cleaning"
+	}
+    ],
     "platforms":[  
 	{  
             "platform":"MiAqaraPlatform",
@@ -159,6 +174,14 @@
             "platform": "cmdSwitch2",
 	    "name": "CMD Switch 2",
 	    "switches": [{
+		"name": "VPN",
+		"on_cmd": "ssh pi@192.168.0.2 'sudo reboot'",
+		"off_cmd": "ssh pi@192.168.0.2 'sudo reboot'",
+		"state_cmd": "ping -c 2 -W 1 192.168.0.2 | grep -i '2 received'",
+                "polling": true,
+                "interval": 20,
+                "timeout": 20
+	    },{
 		"name": "KitchenPi",
 		"on_cmd": "ssh pi@192.168.0.181 'sudo reboot'",
                 "off_cmd": "ssh pi@192.168.0.181 'sudo shutdown now'",
@@ -184,7 +207,7 @@
                 "timeout": 20
 	    }, {
 		"name" : "PC",
-		"on_cmd": "wakeonlan A0:A8:CD:88:88:A3",
+		"on_cmd": "wakeonlan AC:12:03:A1:CD:A4",
 		"off_cmd": "wget http://192.168.0.100:8009/sleep",
 		"state_cmd": "ping -c 2 -W 1 192.168.0.100 | grep -i '2 received'",
 		"polling": true,
