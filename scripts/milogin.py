@@ -70,8 +70,11 @@ def getInfo(host, token):
         vpnSwitch(enableVPN_url)
     elif action == 'disable':
         vpnSwitch(disableVPN_url)
-    else:
+    elif action == 'vpnstatus':
         vpnStatus(vpn_url)
+    elif action == 'reboot':
+        doReboot(reboot_url)
+    else:
         pass
 
 
