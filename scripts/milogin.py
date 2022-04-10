@@ -59,6 +59,7 @@ def getInfo(host, token):
     reboot_url = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqnetwork/reboot?client=web'
     disableVPN_url = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqsystem/vpn_switch?conn=0&id=03d130ef033ce780b082b85942970949'
     enableVPN_url  = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqsystem/vpn_switch?conn=1&id=03d130ef033ce780b082b85942970949'
+    vpn_url  = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqsystem/vpn_status'
 
     #getStatus(base_url)
     #getWanInfo(wan_url)
@@ -70,6 +71,7 @@ def getInfo(host, token):
     elif action == 'disable':
         vpnSwitch(disableVPN_url)
     else:
+        vpnStatus(vpn_url)
         pass
 
 
@@ -100,11 +102,21 @@ def getWanInfo(url):
     except Exception,e:
         print e
 
+def vpnStatus(url):
+    try:
+        response = json.loads(requests.get(url,timeout=5).content)
+        if response['status'] != 0:
+            print 'c' + str(response['status'])
+        else:
+            print 'c0'
+    except Exception, e:
+        print e
+
 def vpnSwitch(url):
     try:
         response = json.loads(requests.get(url,timeout=5).content)
         if response['code'] != 0:
-            print 'Failed with code' + response['code']
+            print 'Failed with code' + str(response['code'])
         else:
             print 'Success'
     except Exception, e:
