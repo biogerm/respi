@@ -56,7 +56,7 @@ def getInfo(host, token):
     stop_url = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqnetwork/pppoe_stop'
     start_url = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqnetwork/pppoe_start'
     pppoe_url = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqnetwork/pppoe_status'
-    reboot_url = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqnetwork/reboot?client=web'
+    reboot_url = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqsystem/reboot?client=web'
     disableVPN_url = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqsystem/vpn_switch?conn=0&id=03d130ef033ce780b082b85942970949'
     enableVPN_url  = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqsystem/vpn_switch?conn=1&id=03d130ef033ce780b082b85942970949'
     vpn_url  = 'http://'+ host + '/cgi-bin/luci/;stok='+ token + '/api/xqsystem/vpn_status'
@@ -75,6 +75,7 @@ def getInfo(host, token):
     elif action == 'reboot':
         doReboot(reboot_url)
     else:
+        getStatus(base_url)
         pass
 
 
