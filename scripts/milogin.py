@@ -40,7 +40,7 @@ def getToken(host):
         "username": "admin"
     }
 
-    response = requests.post(url=aimurl, data=data, timeout=5)
+    response = requests.post(url=aimurl, data=data, timeout=15)
     resjson = json.loads(response.content)
 
     if resjson['code'] == 0:
