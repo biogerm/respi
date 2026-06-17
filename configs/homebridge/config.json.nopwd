@@ -201,10 +201,10 @@
                 "name": "Silk Road",
                 "on_cmd": "/home/pi/git/respi/scripts/milogin.py 192.168.0.1 PASSWORD enable",
                 "off_cmd": "/home/pi/git/respi/scripts/milogin.py 192.168.0.1 PASSWORD disable",
-                "state_cmd": "/home/pi/git/respi/scripts/milogin.py 192.168.0.1 PASSWORD vpnstatus | grep -i 'c0'",
+                "state_cmd": "ping -c 1 -W 1 192.168.0.1 >/dev/null 2>&1 && /home/pi/git/respi/scripts/milogin.py 192.168.0.1 PASSWORD vpnstatus | grep -i 'c0'",
                 "polling": true,
-                "interval": 20,
-                "timeout": 20
+                "interval": 60,
+                "timeout": 8
 	    }, {
                 "name": "MainRouter",
                 "on_cmd": "/home/pi/git/respi/scripts/milogin.py 192.168.0.1 PASSWORD reboot",
