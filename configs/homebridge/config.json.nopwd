@@ -229,41 +229,6 @@
 		"polling": true,
 		"interval": 20,
 		"timeout": 20
-	    }, {
-		"name" : "Vacuum Cleaner",
-		"on_cmd": "curl -X POST http://192.168.0.181:3000/remotes/PowerBotVR/KEY_AUTO",
-		"off_cmd": "curl -X POST http://192.168.0.181:3000/remotes/PowerBotVR/KEY_RECHARGE",
-		"manufacturer": "Samsung",
-		"model": "PowerBot VR9000",
-		"serial": "1233211234567"
-	    }, {
-		"name" : "Living Room Ceiling",
-		"on_cmd": "python /home/pi/git/respi/scripts/switch433/livingroom.py a",
-		"off_cmd": "python /home/pi/git/respi/scripts/switch433/livingroom.py a",
-		"manufacturer": "Aliexpress",
-		"model": "Remote Controlled Switch",
-		"serial": "1233211234566"
-	    }, {
-		"name" : "Entrance Ceiling Lamp",
-		"on_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py a",
-		"off_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py a",
-		"manufacturer": "Aliexpress",
-		"model": "2 in 1",
-		"serial": "1233211234567"
-	    }, {
-		"name" : "Aisle Ceiling Lamp",
-		"on_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py b",
-		"off_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py b",
-		"manufacturer": "Aliexpress",
-		"model": "2 in 1",
-		"serial": "1233211234567"
-	    }, {
-		"name" : "All Ceiling Lamp",
-		"on_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py all_off",
-		"off_cmd": "python /home/pi/git/respi/scripts/switch433/entrance.py all_off",
-		"manufacturer": "Aliexpress",
-		"model": "2 in 1",
-		"serial": "1233211234567"
 	    }]
 	},
 	{
