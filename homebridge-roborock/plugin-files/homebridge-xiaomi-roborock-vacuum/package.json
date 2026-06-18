@@ -1,0 +1,101 @@
+{
+  "_from": "homebridge-xiaomi-roborock-vacuum@latest",
+  "_id": "homebridge-xiaomi-roborock-vacuum@0.20.1",
+  "_inBundle": false,
+  "_integrity": "sha512-gqXfsH6fWpCAxhFhWDIwzb/mEettGwNO8EaZ/hIknR5SeJp1ITvHYLhkeBNJPdqp/G+fBOzzwS19N8+jflYATw==",
+  "_location": "/homebridge-xiaomi-roborock-vacuum",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "homebridge-xiaomi-roborock-vacuum@latest",
+    "name": "homebridge-xiaomi-roborock-vacuum",
+    "escapedName": "homebridge-xiaomi-roborock-vacuum",
+    "rawSpec": "latest",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER"
+  ],
+  "_resolved": "https://registry.npmjs.org/homebridge-xiaomi-roborock-vacuum/-/homebridge-xiaomi-roborock-vacuum-0.20.1.tgz",
+  "_shasum": "9cb76210ec6fa45bd7797a2e0c0907e2a9aa3bef",
+  "_spec": "homebridge-xiaomi-roborock-vacuum@latest",
+  "_where": "/home/pi/git/respi/scripts",
+  "bin": {
+    "miio-vacuum": "miio/cli/index.js"
+  },
+  "bugs": {
+    "url": "https://github.com/homebridge-xiaomi-roborock-vacuum/homebridge-xiaomi-roborock-vacuum/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {
+    "abstract-things": "0.9.0",
+    "chalk": "4.1.2",
+    "debug": "4.3.3",
+    "deep-equal": "2.0.5",
+    "semver": "7.3.5",
+    "tinkerhub-discovery": "0.3.1",
+    "yargs": "15.4.1"
+  },
+  "deprecated": false,
+  "description": "Xiaomi Vacuum Cleaner - 1st (Mi Robot), 2nd (Roborock S50 + S55), 3rd Generation (Roborock S6) and S5 Max - plugin for Homebridge.",
+  "devDependencies": {
+    "jest": "27.4.2",
+    "prettier": "2.3.2"
+  },
+  "engines": {
+    "homebridge": ">=0.4.45",
+    "node": ">=10.0.0"
+  },
+  "homepage": "https://github.com/homebridge-xiaomi-roborock-vacuum/homebridge-xiaomi-roborock-vacuum",
+  "keywords": [
+    "homebridge-plugin",
+    "xiaomi",
+    "mi robot",
+    "vacuum cleaner",
+    "roborock s50",
+    "roborock s55",
+    "roborock s5",
+    "roborock s5 max",
+    "xiaomi vacuum gen1",
+    "xiaomi vacuum gen2",
+    "xiaomi vacuum gen3",
+    "roborock s6",
+    "roborock t6",
+    "roborock t4",
+    "xiaowa lite c10",
+    "xiaowa c10",
+    "mi robot 1s"
+  ],
+  "license": "MIT",
+  "name": "homebridge-xiaomi-roborock-vacuum",
+  "optionalDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/homebridge-xiaomi-roborock-vacuum/homebridge-xiaomi-roborock-vacuum.git"
+  },
+  "scripts": {
+    "lint:fix": "prettier --write **/*.*",
+    "test": "jest"
+  },
+  "version": "0.20.1",
+  "warnings": [
+    {
+      "code": "ENOTSUP",
+      "required": {
+        "node": ">=10.0.0",
+        "homebridge": ">=0.4.45"
+      },
+      "pkgid": "homebridge-xiaomi-roborock-vacuum@0.20.1"
+    },
+    {
+      "code": "ENOTSUP",
+      "required": {
+        "node": ">=10.0.0",
+        "homebridge": ">=0.4.45"
+      },
+      "pkgid": "homebridge-xiaomi-roborock-vacuum@0.20.1"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Ensure ASUS Roborock UDP relay is running
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/home/pi/git/respi
+ExecStart=/home/pi/git/respi/homebridge-roborock/scripts/roborock-relay-watchdog.sh
