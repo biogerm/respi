@@ -11,16 +11,53 @@ REMOTE_LOG="${REMOTE_LOG:-/dev/null}"
 SRC="${SRC:-$REPO_ROOT/homebridge-roborock/relay/tools/asus_udp_relay_nolibc.c}"
 CACHE_DIR="${CACHE_DIR:-$HOME/.cache/roborock-relay}"
 LOCAL_BIN="${LOCAL_BIN:-$CACHE_DIR/asus_udp_relay_nolibc}"
+STATE_FILE="${STATE_FILE:-$CACHE_DIR/watchdog.state}"
+LOCK_FILE="${LOCK_FILE:-$CACHE_DIR/watchdog.lock}"
+SUMMARY_EVERY_SECONDS="${SUMMARY_EVERY_SECONDS:-3600}"
 LOCAL_REBUILT=0
 
 SSH_OPTS=(
   -o BatchMode=yes
   -o ConnectTimeout=8
+  -o ConnectionAttempts=1
   -o StrictHostKeyChecking=no
 )
 
 log() {
   printf '%s %s\n' "$(date -Is)" "$*"
+}
+
+log_state() {
+  local status="$1"
+  shift
+  local message="$*"
+  local now old_status old_time
+
+  mkdir -p "$CACHE_DIR"
+  now="$(date +%s)"
+  old_status=""
+  old_time="0"
+
+  if [ -r "$STATE_FILE" ]; then
+    read -r old_status old_time < "$STATE_FILE" || true
+    old_time="${old_time:-0}"
+  fi
+
+  if [ "$status" != "$old_status" ] || [ $((now - old_time)) -ge "$SUMMARY_EVERY_SECONDS" ]; then
+    log "$message"
+    printf '%s %s\n' "$status" "$now" > "$STATE_FILE"
+  fi
+}
+
+lock_once() {
+  mkdir -p "$CACHE_DIR"
+  if command -v flock >/dev/null 2>&1; then
+    exec 9>"$LOCK_FILE"
+    if ! flock -n 9; then
+      log_state "already-running" "relay watchdog skipped: previous run still active"
+      exit 0
+    fi
+  fi
 }
 
 asus() {
@@ -39,35 +76,58 @@ build_local_binary() {
   fi
 }
 
-ensure_remote_binary() {
-  if [ "$LOCAL_REBUILT" -eq 1 ] || ! asus "test -x '$REMOTE_BIN'"; then
-    log "deploying relay binary to ASUS: $REMOTE_BIN"
-    scp "${SSH_OPTS[@]}" "$LOCAL_BIN" "$ASUS_USER@$ASUS_HOST:$REMOTE_BIN"
-    asus "chmod 0755 '$REMOTE_BIN'"
+deploy_remote_binary() {
+  log_state "deploying" "deploying relay binary to ASUS: $REMOTE_BIN"
+  if ! scp "${SSH_OPTS[@]}" "$LOCAL_BIN" "$ASUS_USER@$ASUS_HOST:$REMOTE_BIN"; then
+    log_state "deploy-failed" "relay binary deployment failed: ASUS unreachable or scp failed"
+    return 1
+  fi
+  if ! asus "chmod 0755 '$REMOTE_BIN'"; then
+    log_state "deploy-failed" "relay binary deployment failed: chmod on ASUS failed"
+    return 1
   fi
 }
 
-ensure_firewall_rule() {
-  asus "/usr/sbin/iptables -C INPUT -p udp -s '$PI_SOURCE_IP' --dport '$RELAY_PORT' -j ACCEPT 2>/dev/null || /usr/sbin/iptables -I INPUT 1 -p udp -s '$PI_SOURCE_IP' --dport '$RELAY_PORT' -j ACCEPT"
-}
-
-ensure_relay_running() {
-  if asus "ps | grep '[a]sus_udp_relay_nolibc' >/dev/null"; then
-    return 0
-  fi
-
-  log "starting ASUS relay"
-  asus "'$REMOTE_BIN' >'$REMOTE_LOG' 2>&1 < /dev/null &"
-  sleep 1
-  asus "ps | grep '[a]sus_udp_relay_nolibc' >/dev/null"
+ensure_remote_state() {
+  asus "
+    [ -x '$REMOTE_BIN' ] || exit 20
+    /usr/sbin/iptables -C INPUT -p udp -s '$PI_SOURCE_IP' --dport '$RELAY_PORT' -j ACCEPT 2>/dev/null || /usr/sbin/iptables -I INPUT 1 -p udp -s '$PI_SOURCE_IP' --dport '$RELAY_PORT' -j ACCEPT
+    if ! ps | grep '[a]sus_udp_relay_nolibc' >/dev/null; then
+      '$REMOTE_BIN' >'$REMOTE_LOG' 2>&1 < /dev/null &
+      sleep 1
+    fi
+    ps | grep '[a]sus_udp_relay_nolibc' >/dev/null
+  "
 }
 
 main() {
+  lock_once
   build_local_binary
-  ensure_remote_binary
-  ensure_firewall_rule
-  ensure_relay_running
-  log "relay healthy"
+
+  if [ "$LOCAL_REBUILT" -eq 1 ]; then
+    deploy_remote_binary || exit 0
+  fi
+
+  set +e
+  ensure_remote_state
+  rc=$?
+  set -e
+
+  if [ "$rc" -eq 20 ]; then
+    deploy_remote_binary || exit 0
+    set +e
+    ensure_remote_state
+    rc=$?
+    set -e
+  fi
+
+  if [ "$rc" -eq 0 ]; then
+    log_state "healthy" "relay healthy"
+  elif [ "$rc" -eq 255 ]; then
+    log_state "asus-unreachable" "relay check skipped: ASUS unreachable"
+  else
+    log_state "relay-failed" "relay check failed with status $rc"
+  fi
 }
 
 main "$@"

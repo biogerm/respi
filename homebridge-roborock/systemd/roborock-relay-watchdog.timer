@@ -1,10 +1,10 @@
 [Unit]
-Description=Run ASUS Roborock UDP relay watchdog every minute
+Description=Run ASUS Roborock UDP relay watchdog every five minutes
 
 [Timer]
 OnBootSec=1min
-OnUnitActiveSec=1min
-AccuracySec=10s
+OnUnitActiveSec=5min
+AccuracySec=30s
 Persistent=true
 
 [Install]
