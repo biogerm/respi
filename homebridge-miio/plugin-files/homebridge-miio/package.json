@@ -1,0 +1,50 @@
+{
+  "_from": "homebridge-miio@0.2.0",
+  "_id": "homebridge-miio@0.2.0",
+  "_inBundle": false,
+  "_integrity": "sha1-Z27aoUACSCTWk3YnRSiY3U3+kTw=",
+  "_location": "/homebridge-miio",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "version",
+    "registry": true,
+    "raw": "homebridge-miio@0.2.0",
+    "name": "homebridge-miio",
+    "escapedName": "homebridge-miio",
+    "rawSpec": "0.2.0",
+    "saveSpec": null,
+    "fetchSpec": "0.2.0"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/homebridge-miio/-/homebridge-miio-0.2.0.tgz",
+  "_shasum": "676edaa140024824d6937627452898dd4dfe913c",
+  "_spec": "homebridge-miio@0.2.0",
+  "_where": "/home/pi/git/respi/scripts",
+  "bugs": {
+    "url": "http://github.com/Bluebie/homebridge-miio/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {
+    "miio": "=0.6.0"
+  },
+  "deprecated": false,
+  "description": "Use some Xiaomi devices with Homebridge: https://github.com/Bluebie/homebridge-miio",
+  "engines": {
+    "homebridge": ">=0.4.16",
+    "node": ">=7.0.0"
+  },
+  "homepage": "https://github.com/Bluebie/homebridge-miio",
+  "keywords": [
+    "homebridge-plugin"
+  ],
+  "license": "ISC",
+  "name": "homebridge-miio",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Bluebie/homebridge-miio.git"
+  },
+  "version": "0.2.0"
+}
