@@ -1,0 +1,9 @@
+[Unit]
+Description=OpenVPN UK remote route and LAN recovery watchdog
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/openvpn-uk-route-watchdog
+TimeoutStartSec=180s

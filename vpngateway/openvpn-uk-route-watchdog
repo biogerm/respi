@@ -1,0 +1,319 @@
+#!/bin/sh
+set -eu
+
+CONFIG_FILE=${WATCHDOG_CONFIG_FILE:-/etc/default/openvpn-uk-route-watchdog}
+
+if [ ! -r "$CONFIG_FILE" ]; then
+    logger -t openvpn-uk-route-watchdog "required config is not readable: $CONFIG_FILE"
+    exit 1
+fi
+
+# The config is root-owned deployment data and is intentionally not tracked.
+. "$CONFIG_FILE"
+
+: "${REMOTE:?REMOTE must be set in $CONFIG_FILE}"
+: "${LOCAL_ADDRESS:?LOCAL_ADDRESS must be set in $CONFIG_FILE}"
+: "${GATEWAY:?GATEWAY must be set in $CONFIG_FILE}"
+: "${IFACE:?IFACE must be set in $CONFIG_FILE}"
+: "${SERVICE:?SERVICE must be set in $CONFIG_FILE}"
+: "${NETWORK_SERVICE:?NETWORK_SERVICE must be set in $CONFIG_FILE}"
+TAG="openvpn-uk-route-watchdog"
+
+STATE_DIR="/var/lib/openvpn-uk-route-watchdog"
+REBOOT_MARKER="$STATE_DIR/reboot-requested"
+DEGRADED_MARKER="$STATE_DIR/network-degraded-after-reboot"
+LAST_RETRY="$STATE_DIR/last-network-retry"
+TRACE_LOG="/var/log/openvpn-uk-route-watchdog-trace.log"
+TRACE_MAX_BYTES=5242880
+LOGICAL_RETRY_SECONDS=600
+PHYSICAL_RETRY_SECONDS=1800
+RESET_WAIT_ATTEMPTS=9
+RESET_WAIT_SECONDS=5
+
+log() {
+    logger -t "$TAG" "$*"
+}
+
+read_epoch() {
+    if [ -f "$1" ]; then
+        sed -n '1p' "$1" 2>/dev/null || printf '0\n'
+    else
+        printf '0\n'
+    fi
+}
+
+current_boot_id() {
+    cat /proc/sys/kernel/random/boot_id
+}
+
+network_fault_reason() {
+    if [ ! -d "/sys/class/net/$IFACE" ]; then
+        printf 'interface-missing\n'
+        return
+    fi
+
+    carrier=$(cat "/sys/class/net/$IFACE/carrier" 2>/dev/null || printf '0')
+    if [ "$carrier" != "1" ]; then
+        printf 'carrier-down\n'
+        return
+    fi
+
+    if ! ip link show dev "$IFACE" 2>/dev/null | grep -q "state UP"; then
+        printf 'interface-down\n'
+        return
+    fi
+
+    if ! ip -4 addr show dev "$IFACE" scope global 2>/dev/null |
+        grep -q "inet $LOCAL_ADDRESS/"; then
+        printf 'address-missing\n'
+        return
+    fi
+
+    if ! ip -4 route show default 2>/dev/null |
+        grep -q "via $GATEWAY dev $IFACE"; then
+        printf 'default-route-missing\n'
+        return
+    fi
+
+    printf 'healthy\n'
+}
+
+lan_ready() {
+    [ "$(network_fault_reason)" = "healthy" ]
+}
+
+remote_route_ok() {
+    ip -4 route get "$REMOTE" 2>/dev/null |
+        grep -q "via $GATEWAY dev $IFACE"
+}
+
+rotate_trace_log() {
+    [ -f "$TRACE_LOG" ] || return 0
+    size=$(wc -c < "$TRACE_LOG" 2>/dev/null || printf '0')
+    [ "$size" -lt "$TRACE_MAX_BYTES" ] && return 0
+
+    rm -f "$TRACE_LOG.3"
+    [ ! -f "$TRACE_LOG.2" ] || mv "$TRACE_LOG.2" "$TRACE_LOG.3"
+    [ ! -f "$TRACE_LOG.1" ] || mv "$TRACE_LOG.1" "$TRACE_LOG.2"
+    mv "$TRACE_LOG" "$TRACE_LOG.1"
+}
+
+trace_snapshot() {
+    label=$1
+    reason=$(network_fault_reason)
+    rotate_trace_log || log "could not rotate $TRACE_LOG; continuing recovery"
+
+    {
+        printf '\n===== watchdog trace: %s =====\n' "$label"
+        date -R
+        printf 'epoch=%s\n' "$(date +%s)"
+        printf 'boot_id=%s\n' "$(current_boot_id)"
+        printf 'fault_reason=%s\n' "$reason"
+        printf 'uptime: '
+        uptime || true
+
+        printf '\n-- watchdog state --\n'
+        for state_file in "$REBOOT_MARKER" "$DEGRADED_MARKER" "$LAST_RETRY"; do
+            if [ -f "$state_file" ]; then
+                printf '[%s]\n' "$state_file"
+                sed -n '1,20p' "$state_file" || true
+            fi
+        done
+
+        printf '\n-- local system --\n'
+        uname -a || true
+        free -m || true
+        df -h / /var || true
+        vcgencmd get_throttled 2>/dev/null || true
+        vcgencmd measure_temp 2>/dev/null || true
+        ps -eo pid,ppid,stat,%cpu,%mem,comm --sort=-%cpu 2>/dev/null | head -n 25 || true
+
+        printf '\n-- interface carrier and state --\n'
+        for item in carrier operstate address mtu speed duplex; do
+            path="/sys/class/net/$IFACE/$item"
+            [ ! -r "$path" ] || printf '%s=%s\n' "$item" "$(cat "$path" 2>/dev/null || true)"
+        done
+        ip -d -s link show dev "$IFACE" 2>/dev/null || true
+        ip -4 addr show dev "$IFACE" 2>/dev/null || true
+
+        printf '\n-- interface counters --\n'
+        for counter in /sys/class/net/"$IFACE"/statistics/*; do
+            [ ! -r "$counter" ] || printf '%s=%s\n' "${counter##*/}" "$(cat "$counter" 2>/dev/null || true)"
+        done
+
+        printf '\n-- routing and passive neighbour state --\n'
+        ip -4 rule show 2>/dev/null || true
+        ip -4 route show table all 2>/dev/null || true
+        ip -4 route get "$REMOTE" 2>/dev/null || true
+        ip neigh show dev "$IFACE" 2>/dev/null || true
+
+        printf '\n-- service state --\n'
+        systemctl is-active "$NETWORK_SERVICE" 2>/dev/null || true
+        systemctl is-active "$SERVICE" 2>/dev/null || true
+        systemctl status "$NETWORK_SERVICE" --no-pager -l 2>/dev/null || true
+        systemctl status "$SERVICE" --no-pager -l 2>/dev/null || true
+
+        printf '\n-- recent dhcpcd journal --\n'
+        journalctl -b -u "$NETWORK_SERVICE" --no-pager -n 160 2>/dev/null || true
+        printf '\n-- recent OpenVPN journal --\n'
+        journalctl -b -u "$SERVICE" --no-pager -n 160 2>/dev/null || true
+        printf '\n-- recent kernel journal --\n'
+        journalctl -b -k --no-pager -n 200 2>/dev/null || true
+        printf '\n-- recent persistent syslog --\n'
+        tail -n 200 /var/log/syslog 2>/dev/null || true
+        printf '===== end watchdog trace: %s =====\n' "$label"
+    } >> "$TRACE_LOG" 2>&1 || log "could not append trace '$label' to $TRACE_LOG; continuing recovery"
+
+    sync || true
+    return 0
+}
+
+clear_network_failure_state() {
+    if [ -f "$REBOOT_MARKER" ] || [ -f "$DEGRADED_MARKER" ]; then
+        log "LAN recovered; clearing watchdog failure state"
+        trace_snapshot "network-recovered"
+    fi
+    rm -f "$REBOOT_MARKER" "$DEGRADED_MARKER" "$LAST_RETRY"
+}
+
+retry_due() {
+    interval=$1
+    now=$(date +%s)
+    last=$(read_epoch "$LAST_RETRY")
+    [ $((now - last)) -ge "$interval" ]
+}
+
+mark_retry() {
+    date +%s > "$LAST_RETRY"
+}
+
+reset_network() {
+    label=$1
+    mark_retry
+    trace_snapshot "$label-before-network-reset"
+    log "LAN is unhealthy ($(network_fault_reason)); resetting $IFACE and $NETWORK_SERVICE"
+
+    systemctl stop "$NETWORK_SERVICE" || true
+    ip link set dev "$IFACE" down || true
+    sleep 2
+    ip link set dev "$IFACE" up || true
+    systemctl start "$NETWORK_SERVICE" || true
+
+    attempt=0
+    while [ "$attempt" -lt "$RESET_WAIT_ATTEMPTS" ]; do
+        sleep "$RESET_WAIT_SECONDS"
+        if lan_ready; then
+            log "LAN recovered after network reset"
+            trace_snapshot "$label-network-reset-recovered"
+            return 0
+        fi
+        attempt=$((attempt + 1))
+    done
+
+    log "LAN is still unhealthy after network reset ($(network_fault_reason))"
+    trace_snapshot "$label-network-reset-failed"
+    return 1
+}
+
+request_one_reboot() {
+    reason=$(network_fault_reason)
+    boot_id=$(current_boot_id)
+    {
+        date +%s
+        printf '%s\n' "$boot_id"
+        printf '%s\n' "$reason"
+    } > "$REBOOT_MARKER"
+
+    trace_snapshot "before-single-watchdog-reboot"
+    log "LAN did not recover after network reset; requesting one system reboot"
+    sync
+
+    if ! systemctl reboot; then
+        log "system reboot request failed"
+        trace_snapshot "watchdog-reboot-request-failed"
+        rm -f "$REBOOT_MARKER"
+        return 1
+    fi
+}
+
+handle_post_reboot_failure() {
+    reason=$(network_fault_reason)
+
+    if [ ! -f "$DEGRADED_MARKER" ]; then
+        {
+            date +%s
+            printf '%s\n' "$(current_boot_id)"
+            printf '%s\n' "$reason"
+        } > "$DEGRADED_MARKER"
+        log "CRITICAL: LAN is still unhealthy after the watchdog reboot ($reason); suppressing further watchdog reboots"
+        trace_snapshot "network-still-failed-after-watchdog-reboot"
+    fi
+
+    case "$reason" in
+        carrier-down|interface-missing)
+            if retry_due "$PHYSICAL_RETRY_SECONDS"; then
+                mark_retry
+                log "LAN remains physically unavailable ($reason); waiting without cycling the interface"
+                trace_snapshot "post-reboot-physical-link-still-failed"
+            fi
+            ;;
+        *)
+            if retry_due "$LOGICAL_RETRY_SECONDS"; then
+                if reset_network "post-reboot-logical-retry"; then
+                    clear_network_failure_state
+                fi
+            fi
+            ;;
+    esac
+}
+
+handle_unhealthy_lan() {
+    if [ -f "$REBOOT_MARKER" ]; then
+        reboot_boot_id=$(sed -n '2p' "$REBOOT_MARKER" 2>/dev/null || true)
+        this_boot_id=$(current_boot_id)
+
+        if [ -n "$reboot_boot_id" ] && [ "$reboot_boot_id" != "$this_boot_id" ]; then
+            handle_post_reboot_failure
+            return 0
+        fi
+
+        log "LAN remains unhealthy and a reboot has already been requested for this boot; refusing a reboot loop"
+        return 0
+    fi
+
+    trace_snapshot "initial-network-failure"
+    if reset_network "initial-recovery"; then
+        clear_network_failure_state
+        return 0
+    fi
+
+    request_one_reboot
+}
+
+mkdir -p "$STATE_DIR"
+
+if [ "${1:-}" = "--trace-only" ]; then
+    trace_snapshot "manual-trace-only"
+    exit 0
+fi
+
+if ! lan_ready; then
+    handle_unhealthy_lan
+    exit 0
+fi
+
+clear_network_failure_state
+
+if ! systemctl is-active --quiet "$SERVICE"; then
+    log "$SERVICE is not active; restarting"
+    trace_snapshot "openvpn-service-inactive"
+    systemctl restart "$SERVICE"
+    exit 0
+fi
+
+if ! remote_route_ok; then
+    current_route=$(ip -4 route get "$REMOTE" 2>/dev/null | tr "\n" " " || true)
+    log "bad route to $REMOTE: $current_route; restarting $SERVICE"
+    trace_snapshot "openvpn-remote-route-unhealthy"
+    systemctl restart "$SERVICE"
+fi
