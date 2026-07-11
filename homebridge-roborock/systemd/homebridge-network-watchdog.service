@@ -1,0 +1,9 @@
+[Unit]
+Description=LivingRoom network and Homebridge recovery watchdog
+After=network-online.target homebridge.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homebridge-network-watchdog
+TimeoutStartSec=150s
