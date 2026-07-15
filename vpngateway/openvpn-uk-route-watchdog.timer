@@ -1,10 +1,10 @@
 [Unit]
-Description=Run OpenVPN UK remote route watchdog every minute
+Description=Run OpenVPN UK remote route watchdog every 30 seconds
 
 [Timer]
 OnBootSec=2min
-OnUnitActiveSec=1min
-AccuracySec=10s
+OnUnitActiveSec=30s
+AccuracySec=5s
 Persistent=true
 
 [Install]

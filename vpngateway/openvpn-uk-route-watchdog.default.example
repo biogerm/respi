@@ -5,3 +5,9 @@ GATEWAY="LAN_GATEWAY_IP"
 IFACE="ETHERNET_INTERFACE"
 SERVICE="OPENVPN_SYSTEMD_SERVICE"
 NETWORK_SERVICE="NETWORK_SYSTEMD_SERVICE"
+# Optional Wi-Fi fallback. Leave both empty when no backup link exists.
+BACKUP_IFACE="WIFI_INTERFACE"
+BACKUP_ADDRESS="WIFI_STATIC_IP"
+# Optional active OpenVPN data-plane probe. The tunnel gateway must answer ICMP.
+TUN_IFACE="tun0"
+TUN_GATEWAY="VPN_TUNNEL_GATEWAY_IP"

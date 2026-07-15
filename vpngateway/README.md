@@ -4,18 +4,23 @@ These files mirror the recovery watchdog deployed on the `vpngateway` host.
 Site-specific addresses and service names belong in the untracked configuration
 file shown by `openvpn-uk-route-watchdog.default.example`.
 
-The watchdog runs once per minute. It checks the local Ethernet carrier,
-interface state, expected IPv4 address, default route, OpenVPN service state,
-and the route to the OpenVPN remote endpoint. It does not actively probe other
-hosts.
+The watchdog runs every 30 seconds. It checks the primary Ethernet carrier,
+interface state, expected IPv4 address, default route, and real reachability of
+the configured LAN gateway. A configured Wi-Fi interface is accepted as a
+fallback uplink. It also checks the OpenVPN service, the route to the OpenVPN
+remote endpoint through the selected uplink, and actively probes the configured
+VPN tunnel gateway through `tun0`.
 
 For a local network failure it:
 
-1. saves a persistent diagnostic trace;
-2. resets `eth0` and `dhcpcd.service`, then waits up to 45 seconds;
-3. requests one system reboot if the network is still unhealthy;
-4. suppresses further watchdog reboots if the next boot is also unhealthy;
-5. retries logical network recovery every 10 minutes, while physical-link
+1. records a first failed tunnel probe, then restarts OpenVPN after a second
+   failed probe, with a two-minute restart rate limit;
+2. saves a persistent diagnostic trace;
+3. resets the primary Ethernet interface and `dhcpcd.service`, then waits up
+   to 45 seconds when no uplink is healthy;
+4. requests one system reboot if no uplink is still healthy;
+5. suppresses further watchdog reboots if the next boot is also unhealthy;
+6. retries logical network recovery every 10 minutes, while physical-link
    failures are only recorded every 30 minutes.
 
 Persistent traces are written to:

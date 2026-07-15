@@ -17,16 +17,24 @@ fi
 : "${IFACE:?IFACE must be set in $CONFIG_FILE}"
 : "${SERVICE:?SERVICE must be set in $CONFIG_FILE}"
 : "${NETWORK_SERVICE:?NETWORK_SERVICE must be set in $CONFIG_FILE}"
+BACKUP_IFACE=${BACKUP_IFACE:-}
+BACKUP_ADDRESS=${BACKUP_ADDRESS:-}
+TUN_IFACE=${TUN_IFACE:-tun0}
+TUN_GATEWAY=${TUN_GATEWAY:-}
 TAG="openvpn-uk-route-watchdog"
 
 STATE_DIR="/var/lib/openvpn-uk-route-watchdog"
 REBOOT_MARKER="$STATE_DIR/reboot-requested"
 DEGRADED_MARKER="$STATE_DIR/network-degraded-after-reboot"
 LAST_RETRY="$STATE_DIR/last-network-retry"
+TUNNEL_FAILURE_MARKER="$STATE_DIR/tunnel-probe-failed"
+LAST_TUNNEL_RESTART="$STATE_DIR/last-tunnel-restart"
 TRACE_LOG="/var/log/openvpn-uk-route-watchdog-trace.log"
 TRACE_MAX_BYTES=5242880
 LOGICAL_RETRY_SECONDS=600
 PHYSICAL_RETRY_SECONDS=1800
+TUNNEL_RESTART_SECONDS=120
+TUNNEL_CONFIRM_SECONDS=20
 RESET_WAIT_ATTEMPTS=9
 RESET_WAIT_SECONDS=5
 
@@ -46,45 +54,98 @@ current_boot_id() {
     cat /proc/sys/kernel/random/boot_id
 }
 
-network_fault_reason() {
-    if [ ! -d "/sys/class/net/$IFACE" ]; then
+interface_fault_reason() {
+    interface=$1
+    address=$2
+
+    if [ ! -d "/sys/class/net/$interface" ]; then
         printf 'interface-missing\n'
         return
     fi
 
-    carrier=$(cat "/sys/class/net/$IFACE/carrier" 2>/dev/null || printf '0')
+    carrier=$(cat "/sys/class/net/$interface/carrier" 2>/dev/null || printf '0')
     if [ "$carrier" != "1" ]; then
         printf 'carrier-down\n'
         return
     fi
 
-    if ! ip link show dev "$IFACE" 2>/dev/null | grep -q "state UP"; then
+    if ! ip link show dev "$interface" 2>/dev/null | grep -q "state UP"; then
         printf 'interface-down\n'
         return
     fi
 
-    if ! ip -4 addr show dev "$IFACE" scope global 2>/dev/null |
-        grep -q "inet $LOCAL_ADDRESS/"; then
+    if ! ip -4 addr show dev "$interface" scope global 2>/dev/null |
+        grep -q "inet $address/"; then
         printf 'address-missing\n'
         return
     fi
 
     if ! ip -4 route show default 2>/dev/null |
-        grep -q "via $GATEWAY dev $IFACE"; then
+        grep -q "via $GATEWAY dev $interface"; then
         printf 'default-route-missing\n'
+        return
+    fi
+
+    # Two probes tolerate a single ICMP loss while still testing real data flow.
+    if ! ping -I "$interface" -c 2 -W 2 "$GATEWAY" >/dev/null 2>&1; then
+        printf 'gateway-unreachable\n'
         return
     fi
 
     printf 'healthy\n'
 }
 
+primary_fault_reason() {
+    interface_fault_reason "$IFACE" "$LOCAL_ADDRESS"
+}
+
+backup_fault_reason() {
+    if [ -z "$BACKUP_IFACE" ] || [ -z "$BACKUP_ADDRESS" ]; then
+        printf 'backup-not-configured\n'
+        return
+    fi
+    interface_fault_reason "$BACKUP_IFACE" "$BACKUP_ADDRESS"
+}
+
+active_uplink() {
+    if [ "$(primary_fault_reason)" = "healthy" ]; then
+        printf '%s\n' "$IFACE"
+    elif [ "$(backup_fault_reason)" = "healthy" ]; then
+        printf '%s\n' "$BACKUP_IFACE"
+    else
+        printf 'none\n'
+    fi
+}
+
+network_fault_reason() {
+    primary_reason=$(primary_fault_reason)
+    if [ "$primary_reason" = "healthy" ]; then
+        printf 'healthy\n'
+        return
+    fi
+
+    backup_reason=$(backup_fault_reason)
+    if [ "$backup_reason" = "healthy" ]; then
+        printf 'primary-%s-backup-healthy\n' "$primary_reason"
+    else
+        printf 'primary-%s-backup-%s\n' "$primary_reason" "$backup_reason"
+    fi
+}
+
 lan_ready() {
-    [ "$(network_fault_reason)" = "healthy" ]
+    [ "$(active_uplink)" != "none" ]
 }
 
 remote_route_ok() {
+    uplink=$1
     ip -4 route get "$REMOTE" 2>/dev/null |
-        grep -q "via $GATEWAY dev $IFACE"
+        grep -q "via $GATEWAY dev $uplink"
+}
+
+tunnel_ready() {
+    [ -n "$TUN_GATEWAY" ] || return 0
+    ip link show dev "$TUN_IFACE" >/dev/null 2>&1 || return 1
+    ping -I "$TUN_IFACE" -c 1 -W 2 "$TUN_GATEWAY" >/dev/null 2>&1
 }
 
 rotate_trace_log() {
@@ -113,7 +174,7 @@ trace_snapshot() {
         uptime || true
 
         printf '\n-- watchdog state --\n'
-        for state_file in "$REBOOT_MARKER" "$DEGRADED_MARKER" "$LAST_RETRY"; do
+        for state_file in "$REBOOT_MARKER" "$DEGRADED_MARKER" "$LAST_RETRY" "$TUNNEL_FAILURE_MARKER" "$LAST_TUNNEL_RESTART"; do
             if [ -f "$state_file" ]; then
                 printf '[%s]\n' "$state_file"
                 sed -n '1,20p' "$state_file" || true
@@ -128,17 +189,35 @@ trace_snapshot() {
         vcgencmd measure_temp 2>/dev/null || true
         ps -eo pid,ppid,stat,%cpu,%mem,comm --sort=-%cpu 2>/dev/null | head -n 25 || true
 
+        printf '\n-- active probes --\n'
+        printf 'primary_reason=%s\n' "$(primary_fault_reason)"
+        printf 'backup_reason=%s\n' "$(backup_fault_reason)"
+        printf 'active_uplink=%s\n' "$(active_uplink)"
+        if tunnel_ready; then
+            printf 'tunnel_probe=healthy\n'
+        else
+            printf 'tunnel_probe=failed\n'
+        fi
+
         printf '\n-- interface carrier and state --\n'
-        for item in carrier operstate address mtu speed duplex; do
-            path="/sys/class/net/$IFACE/$item"
-            [ ! -r "$path" ] || printf '%s=%s\n' "$item" "$(cat "$path" 2>/dev/null || true)"
+        for interface in "$IFACE" "$BACKUP_IFACE"; do
+            [ -n "$interface" ] || continue
+            printf '[%s]\n' "$interface"
+            for item in carrier operstate address mtu speed duplex; do
+                path="/sys/class/net/$interface/$item"
+                [ ! -r "$path" ] || printf '%s=%s\n' "$item" "$(cat "$path" 2>/dev/null || true)"
+            done
+            ip -d -s link show dev "$interface" 2>/dev/null || true
+            ip -4 addr show dev "$interface" 2>/dev/null || true
         done
-        ip -d -s link show dev "$IFACE" 2>/dev/null || true
-        ip -4 addr show dev "$IFACE" 2>/dev/null || true
 
         printf '\n-- interface counters --\n'
-        for counter in /sys/class/net/"$IFACE"/statistics/*; do
-            [ ! -r "$counter" ] || printf '%s=%s\n' "${counter##*/}" "$(cat "$counter" 2>/dev/null || true)"
+        for interface in "$IFACE" "$BACKUP_IFACE"; do
+            [ -n "$interface" ] || continue
+            printf '[%s]\n' "$interface"
+            for counter in /sys/class/net/"$interface"/statistics/*; do
+                [ ! -r "$counter" ] || printf '%s=%s\n' "${counter##*/}" "$(cat "$counter" 2>/dev/null || true)"
+            done
         done
 
         printf '\n-- routing and passive neighbour state --\n'
@@ -146,6 +225,7 @@ trace_snapshot() {
         ip -4 route show table all 2>/dev/null || true
         ip -4 route get "$REMOTE" 2>/dev/null || true
         ip neigh show dev "$IFACE" 2>/dev/null || true
+        [ -z "$BACKUP_IFACE" ] || ip neigh show dev "$BACKUP_IFACE" 2>/dev/null || true
 
         printf '\n-- service state --\n'
         systemctl is-active "$NETWORK_SERVICE" 2>/dev/null || true
@@ -176,6 +256,11 @@ clear_network_failure_state() {
     rm -f "$REBOOT_MARKER" "$DEGRADED_MARKER" "$LAST_RETRY"
 }
 
+clear_tunnel_failure_state() {
+    [ ! -f "$TUNNEL_FAILURE_MARKER" ] || log "OpenVPN tunnel probe recovered"
+    rm -f "$TUNNEL_FAILURE_MARKER"
+}
+
 retry_due() {
     interval=$1
     now=$(date +%s)
@@ -185,6 +270,37 @@ retry_due() {
 
 mark_retry() {
     date +%s > "$LAST_RETRY"
+}
+
+tunnel_restart_due() {
+    now=$(date +%s)
+    last=$(read_epoch "$LAST_TUNNEL_RESTART")
+    [ $((now - last)) -ge "$TUNNEL_RESTART_SECONDS" ]
+}
+
+handle_unhealthy_tunnel() {
+    now=$(date +%s)
+    first_failure=$(read_epoch "$TUNNEL_FAILURE_MARKER")
+    if [ "$first_failure" = "0" ]; then
+        printf '%s\n' "$now" > "$TUNNEL_FAILURE_MARKER"
+        log "OpenVPN tunnel probe failed; waiting for confirmation"
+        return 0
+    fi
+
+    if [ $((now - first_failure)) -lt "$TUNNEL_CONFIRM_SECONDS" ]; then
+        return 0
+    fi
+
+    if ! tunnel_restart_due; then
+        log "OpenVPN tunnel probe is still failing; restart rate limit is active"
+        return 0
+    fi
+
+    date +%s > "$LAST_TUNNEL_RESTART"
+    trace_snapshot "openvpn-tunnel-probe-unhealthy"
+    log "OpenVPN tunnel probe failed twice; restarting $SERVICE"
+    systemctl restart "$SERVICE"
+    rm -f "$TUNNEL_FAILURE_MARKER"
 }
 
 reset_network() {
@@ -250,7 +366,7 @@ handle_post_reboot_failure() {
     fi
 
     case "$reason" in
-        carrier-down|interface-missing)
+        *carrier-down*|*interface-missing*)
             if retry_due "$PHYSICAL_RETRY_SECONDS"; then
                 mark_retry
                 log "LAN remains physically unavailable ($reason); waiting without cycling the interface"
@@ -304,6 +420,8 @@ fi
 
 clear_network_failure_state
 
+uplink=$(active_uplink)
+
 if ! systemctl is-active --quiet "$SERVICE"; then
     log "$SERVICE is not active; restarting"
     trace_snapshot "openvpn-service-inactive"
@@ -311,9 +429,17 @@ if ! systemctl is-active --quiet "$SERVICE"; then
     exit 0
 fi
 
-if ! remote_route_ok; then
+if ! remote_route_ok "$uplink"; then
     current_route=$(ip -4 route get "$REMOTE" 2>/dev/null | tr "\n" " " || true)
-    log "bad route to $REMOTE: $current_route; restarting $SERVICE"
+    log "bad route to $REMOTE through $uplink: $current_route; restarting $SERVICE"
     trace_snapshot "openvpn-remote-route-unhealthy"
     systemctl restart "$SERVICE"
+    exit 0
 fi
+
+if ! tunnel_ready; then
+    handle_unhealthy_tunnel
+    exit 0
+fi
+
+clear_tunnel_failure_state
