@@ -6,9 +6,11 @@ file shown by `openvpn-uk-route-watchdog.default.example`.
 
 The watchdog runs every 30 seconds. It checks the primary Ethernet carrier,
 interface state, expected IPv4 address, default route, and real reachability of
-the configured LAN gateway. A configured Wi-Fi interface is accepted as a
-fallback uplink. It also checks the OpenVPN service, the route to the OpenVPN
-remote endpoint through the selected uplink, and actively probes the configured
+the configured LAN gateway. A configured Wi-Fi interface preserves management
+access while Ethernet is degraded. OpenVPN remains pinned to the primary
+Ethernet route and is never migrated merely because Wi-Fi is temporarily
+healthy. The watchdog also checks the OpenVPN service, the route to the
+OpenVPN remote endpoint through Ethernet, and actively probes the configured
 VPN tunnel gateway through `tun0`.
 
 For a local network failure it:

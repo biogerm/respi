@@ -420,7 +420,15 @@ fi
 
 clear_network_failure_state
 
-uplink=$(active_uplink)
+primary_reason=$(primary_fault_reason)
+backup_reason=$(backup_fault_reason)
+if [ "$primary_reason" != "healthy" ] && [ "$backup_reason" = "healthy" ]; then
+    # The VPN endpoint is deliberately pinned to Ethernet. Wi-Fi preserves
+    # management access during a transient Ethernet fault; it must not cause
+    # repeated VPN restarts merely because the endpoint route remains on eth0.
+    log "primary uplink is unhealthy ($primary_reason) while Wi-Fi backup is healthy; retaining VPN primary route"
+    exit 0
+fi
 
 if ! systemctl is-active --quiet "$SERVICE"; then
     log "$SERVICE is not active; restarting"
@@ -429,9 +437,9 @@ if ! systemctl is-active --quiet "$SERVICE"; then
     exit 0
 fi
 
-if ! remote_route_ok "$uplink"; then
+if ! remote_route_ok "$IFACE"; then
     current_route=$(ip -4 route get "$REMOTE" 2>/dev/null | tr "\n" " " || true)
-    log "bad route to $REMOTE through $uplink: $current_route; restarting $SERVICE"
+    log "bad route to $REMOTE through $IFACE: $current_route; restarting $SERVICE"
     trace_snapshot "openvpn-remote-route-unhealthy"
     systemctl restart "$SERVICE"
     exit 0
