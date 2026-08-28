@@ -1,0 +1,7 @@
+[Unit]
+Description=Pi network recovery reboot guard
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pi-network-recovery-watchdog guard
+TimeoutStartSec=30s

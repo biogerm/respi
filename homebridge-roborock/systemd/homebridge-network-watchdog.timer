@@ -1,5 +1,5 @@
 [Unit]
-Description=Run LivingRoom network and Homebridge recovery watchdog every minute
+Description=Run LivingRoom Homebridge service watchdog every minute
 
 [Timer]
 OnBootSec=2min

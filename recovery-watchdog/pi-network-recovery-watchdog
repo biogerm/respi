@@ -1,0 +1,340 @@
+#!/bin/sh
+set -eu
+
+CONFIG_FILE=${PI_RECOVERY_CONFIG_FILE:-/etc/default/pi-network-recovery-watchdog}
+[ -r "$CONFIG_FILE" ] || exit 1
+. "$CONFIG_FILE"
+
+: "${PRIMARY_IFACE:?}"
+: "${PRIMARY_ADDRESS:?}"
+: "${GATEWAY:?}"
+: "${NETWORK_SERVICE:?}"
+
+BACKUP_IFACE=${BACKUP_IFACE:-}
+BACKUP_ADDRESS=${BACKUP_ADDRESS:-}
+MAINTENANCE_START_MINUTE=${MAINTENANCE_START_MINUTE:-}
+MAINTENANCE_END_MINUTE=${MAINTENANCE_END_MINUTE:-}
+FAIL_CONFIRM_SECONDS=${FAIL_CONFIRM_SECONDS:-180}
+RECOVERY_WAIT_SECONDS=${RECOVERY_WAIT_SECONDS:-120}
+RECOVERY_POLL_SECONDS=${RECOVERY_POLL_SECONDS:-5}
+RECOVERY_GUARD_GRACE_SECONDS=${RECOVERY_GUARD_GRACE_SECONDS:-45}
+POST_REBOOT_RETRY_SECONDS=${POST_REBOOT_RETRY_SECONDS:-600}
+STATE_DIR="/var/lib/pi-network-recovery-watchdog"
+RUNTIME_DIR="/run/pi-network-recovery-watchdog"
+FIRST_FAILURE="$STATE_DIR/first-failure"
+RECOVERY_ACTIVE="$STATE_DIR/recovery-active"
+REBOOT_REQUESTED="$STATE_DIR/reboot-requested"
+POST_REBOOT="$STATE_DIR/post-reboot-degraded"
+LAST_POST_RETRY="$STATE_DIR/last-post-reboot-retry"
+GUARD_REBOOT="$STATE_DIR/guard-reboot-requested"
+RUNTIME_ACTIVE="$RUNTIME_DIR/recovery-active"
+TRACE_LOG="/var/log/pi-network-recovery-watchdog-trace.log"
+TRACE_MAX_BYTES=5242880
+TAG="pi-network-recovery-watchdog"
+
+log() {
+    logger -t "$TAG" "$*" || true
+}
+
+boot_id() {
+    cat /proc/sys/kernel/random/boot_id
+}
+
+epoch() {
+    date +%s
+}
+
+field() {
+    [ -r "$1" ] && sed -n "${2:-1}p" "$1" 2>/dev/null || true
+}
+
+valid_epoch() {
+    case "$1" in
+        ''|*[!0-9]*) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
+iface_reason() {
+    interface=$1
+    address=$2
+    [ -n "$interface" ] && [ -n "$address" ] || {
+        printf 'not-configured\n'
+        return
+    }
+    [ -d "/sys/class/net/$interface" ] || {
+        printf 'interface-missing\n'
+        return
+    }
+    [ "$(cat "/sys/class/net/$interface/carrier" 2>/dev/null || printf '0')" = 1 ] || {
+        printf 'carrier-down\n'
+        return
+    }
+    ip link show dev "$interface" 2>/dev/null | grep -q "state UP" || {
+        printf 'interface-down\n'
+        return
+    }
+    ip -4 addr show dev "$interface" scope global 2>/dev/null |
+        grep -Fq "inet $address/" || {
+        printf 'address-missing\n'
+        return
+    }
+    ip -4 route show default 2>/dev/null |
+        grep -Fq "via $GATEWAY dev $interface" || {
+        printf 'default-route-missing\n'
+        return
+    }
+    ping -I "$interface" -c 2 -W 2 "$GATEWAY" >/dev/null 2>&1 || {
+        printf 'gateway-unreachable\n'
+        return
+    }
+    printf 'healthy\n'
+}
+
+network_status() {
+    primary=$(iface_reason "$PRIMARY_IFACE" "$PRIMARY_ADDRESS")
+    backup=$(iface_reason "$BACKUP_IFACE" "$BACKUP_ADDRESS")
+    if [ "$primary" = healthy ]; then
+        printf 'primary-healthy\n'
+    elif [ "$backup" = healthy ]; then
+        printf 'backup-healthy\n'
+    elif [ -z "$BACKUP_IFACE" ]; then
+        printf 'primary-%s\n' "$primary"
+    else
+        printf 'primary-%s-backup-%s\n' "$primary" "$backup"
+    fi
+}
+
+network_healthy() {
+    case "$(network_status)" in
+        primary-healthy|backup-healthy) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+maintenance_window() {
+    [ -n "$MAINTENANCE_START_MINUTE" ] || return 1
+    [ -n "$MAINTENANCE_END_MINUTE" ] || return 1
+    hour=$(date +%H)
+    minute=$(date +%M)
+    hour=${hour#0}
+    minute=${minute#0}
+    [ -n "$hour" ] || hour=0
+    [ -n "$minute" ] || minute=0
+    now=$((hour * 60 + minute))
+    [ "$now" -ge "$MAINTENANCE_START_MINUTE" ] &&
+        [ "$now" -le "$MAINTENANCE_END_MINUTE" ]
+}
+
+ensure_state() {
+    mkdir -p "$STATE_DIR" "$RUNTIME_DIR"
+}
+
+clear_active() {
+    rm -f "$RECOVERY_ACTIVE" "$RUNTIME_ACTIVE"
+}
+
+clear_incident() {
+    rm -f "$FIRST_FAILURE" "$RECOVERY_ACTIVE" "$REBOOT_REQUESTED" \
+        "$POST_REBOOT" "$LAST_POST_RETRY" "$GUARD_REBOOT" "$RUNTIME_ACTIVE"
+}
+
+write_marker() {
+    target=$1
+    first=$2
+    second=${3:-}
+    third=${4:-}
+    {
+        epoch
+        boot_id
+        printf '%s\n' "$first"
+        printf '%s\n' "$second"
+        printf '%s\n' "$third"
+    } > "$target"
+}
+
+rotate_trace() {
+    [ -f "$TRACE_LOG" ] || return 0
+    size=$(wc -c < "$TRACE_LOG" 2>/dev/null || printf 0)
+    [ "$size" -lt "$TRACE_MAX_BYTES" ] && return 0
+    rm -f "$TRACE_LOG.3"
+    [ ! -f "$TRACE_LOG.2" ] || mv "$TRACE_LOG.2" "$TRACE_LOG.3"
+    [ ! -f "$TRACE_LOG.1" ] || mv "$TRACE_LOG.1" "$TRACE_LOG.2"
+    mv "$TRACE_LOG" "$TRACE_LOG.1"
+}
+
+trace() {
+    label=$1
+    rotate_trace || true
+    {
+        printf '\n===== pi recovery trace: %s =====\n' "$label"
+        date -R
+        printf 'boot_id=%s\n' "$(boot_id)"
+        printf 'network_status=%s\n' "$(network_status)"
+        uptime || true
+        free -m || true
+        df -h / /var /var/log 2>/dev/null || true
+        for interface in "$PRIMARY_IFACE" "$BACKUP_IFACE"; do
+            [ -n "$interface" ] || continue
+            ip -d -s link show dev "$interface" 2>/dev/null || true
+            ip -4 addr show dev "$interface" 2>/dev/null || true
+        done
+        ip -4 route show table all 2>/dev/null || true
+        journalctl -b -u "$NETWORK_SERVICE" --no-pager -n 120 2>/dev/null || true
+        journalctl -b -k --no-pager -n 160 2>/dev/null |
+            grep -Ei 'watchdog|lan78xx|brcmfmac|wlan|eth|oom|I/O error|ext4|mmc' || true
+        printf '===== end pi recovery trace: %s =====\n' "$label"
+    } >> "$TRACE_LOG" 2>&1 || log "could not write trace $label"
+    sync || true
+}
+
+start_recovery() {
+    reason=$1
+    deadline=$(($(epoch) + RECOVERY_WAIT_SECONDS + RECOVERY_GUARD_GRACE_SECONDS))
+    write_marker "$RECOVERY_ACTIVE" "$deadline" "$reason"
+    printf '%s\n' "$deadline" > "$RUNTIME_ACTIVE"
+    trace "$2-before-network-reset"
+    log "resetting dhcpcd and configured network interfaces ($reason)"
+    systemctl stop "$NETWORK_SERVICE" || log "could not stop $NETWORK_SERVICE"
+    ip link set dev "$PRIMARY_IFACE" down || true
+    if [ -n "$BACKUP_IFACE" ] && [ "$BACKUP_IFACE" != "$PRIMARY_IFACE" ]; then
+        ip link set dev "$BACKUP_IFACE" down || true
+    fi
+    sleep 2
+    ip link set dev "$PRIMARY_IFACE" up || true
+    if [ -n "$BACKUP_IFACE" ] && [ "$BACKUP_IFACE" != "$PRIMARY_IFACE" ]; then
+        ip link set dev "$BACKUP_IFACE" up || true
+    fi
+    systemctl start "$NETWORK_SERVICE" || log "could not start $NETWORK_SERVICE"
+}
+
+wait_for_recovery() {
+    elapsed=0
+    while [ "$elapsed" -le "$RECOVERY_WAIT_SECONDS" ]; do
+        network_healthy && return 0
+        sleep "$RECOVERY_POLL_SECONDS"
+        elapsed=$((elapsed + RECOVERY_POLL_SECONDS))
+    done
+    return 1
+}
+
+recover() {
+    label=$1
+    allow_reboot=$2
+    reason=$(network_status)
+    start_recovery "$reason" "$label"
+    if wait_for_recovery; then
+        log "management network recovered after reset"
+        clear_incident
+        trace "$label-network-reset-recovered"
+        return 0
+    fi
+    trace "$label-network-reset-failed"
+    if [ "$allow_reboot" = yes ]; then
+        write_marker "$REBOOT_REQUESTED" "$reason" "normal-reboot"
+        log "network did not recover; requesting one normal reboot"
+        sync || true
+        systemctl reboot || log "normal reboot request returned an error"
+    else
+        clear_active
+        printf '%s\n' "$(epoch)" > "$LAST_POST_RETRY"
+        log "post-reboot reset did not recover networking; preserving reboot-loop protection"
+    fi
+    return 1
+}
+
+run_guard() {
+    ensure_state
+    [ -f "$RECOVERY_ACTIVE" ] || exit 0
+    current_boot=$(boot_id)
+    active_boot=$(field "$RECOVERY_ACTIVE" 2)
+    if [ -n "$active_boot" ] && [ "$active_boot" != "$current_boot" ]; then
+        clear_active
+        exit 0
+    fi
+    if network_healthy; then
+        log "network recovered while recovery was active; clearing guard state"
+        clear_active
+        exit 0
+    fi
+    deadline=$(field "$RECOVERY_ACTIVE" 3)
+    valid_epoch "$deadline" || deadline=$(epoch)
+    [ "$(epoch)" -ge "$deadline" ] || exit 0
+    [ "$(field "$GUARD_REBOOT" 2)" != "$current_boot" ] || exit 0
+    reason=$(network_status)
+    write_marker "$GUARD_REBOOT" "$reason" "recovery deadline expired"
+    write_marker "$REBOOT_REQUESTED" "$reason" "independent-guard"
+    trace "network-recovery-guard-expired"
+    log "recovery deadline expired with no management link; requesting normal reboot"
+    sync || true
+    systemctl reboot || log "independent guard reboot request returned an error"
+}
+
+case "${1:-run}" in
+    check)
+        status=$(network_status)
+        printf 'network_status=%s\n' "$status"
+        case "$status" in primary-healthy|backup-healthy) exit 0 ;; *) exit 1 ;; esac
+        ;;
+    guard)
+        run_guard
+        ;;
+    trace)
+        ensure_state
+        trace "manual"
+        ;;
+esac
+
+ensure_state
+current_boot=$(boot_id)
+active_boot=$(field "$RECOVERY_ACTIVE" 2)
+if [ -n "$active_boot" ] && [ "$active_boot" != "$current_boot" ]; then
+    clear_active
+fi
+
+status=$(network_status)
+case "$status" in
+    primary-healthy|backup-healthy)
+        [ ! -f "$FIRST_FAILURE" ] && [ ! -f "$REBOOT_REQUESTED" ] || log "management network recovered ($status)"
+        clear_incident
+        exit 0
+        ;;
+esac
+
+if maintenance_window; then
+    [ ! -f "$FIRST_FAILURE" ] || log "network is unhealthy during router maintenance; deferring recovery"
+    rm -f "$FIRST_FAILURE"
+    clear_active
+    exit 0
+fi
+
+if [ -f "$REBOOT_REQUESTED" ]; then
+    reboot_boot=$(field "$REBOOT_REQUESTED" 2)
+    if [ -n "$reboot_boot" ] && [ "$reboot_boot" != "$current_boot" ]; then
+        if [ ! -f "$POST_REBOOT" ]; then
+            write_marker "$POST_REBOOT" "$status" "automatic reboot already used"
+            trace "network-still-failed-after-watchdog-reboot"
+            log "network remains unavailable after watchdog reboot; further reboots suppressed"
+        fi
+        last_retry=$(field "$LAST_POST_RETRY" 1)
+        if ! valid_epoch "$last_retry" ||
+            [ $(($(epoch) - last_retry)) -ge "$POST_REBOOT_RETRY_SECONDS" ]; then
+            recover "post-reboot-network-retry" no || true
+        fi
+    fi
+    exit 0
+fi
+
+first_boot=$(field "$FIRST_FAILURE" 2)
+first_epoch=$(field "$FIRST_FAILURE" 1)
+if [ ! -f "$FIRST_FAILURE" ] || [ "$first_boot" != "$current_boot" ] ||
+    ! valid_epoch "$first_epoch"; then
+    write_marker "$FIRST_FAILURE" "$status" "confirmation-pending"
+    trace "initial-network-failure"
+    log "all management links are unhealthy ($status); starting confirmation window"
+    exit 0
+fi
+
+[ $(($(epoch) - first_epoch)) -lt "$FAIL_CONFIRM_SECONDS" ] && exit 0
+recover "confirmed-network-failure" yes || true
+exit 0

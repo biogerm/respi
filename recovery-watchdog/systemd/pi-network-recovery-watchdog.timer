@@ -1,8 +1,8 @@
 [Unit]
-Description=Run OpenVPN UK service watchdog every 30 seconds
+Description=Run Pi management network recovery watchdog every 30 seconds
 
 [Timer]
-OnBootSec=2min
+OnBootSec=30s
 OnUnitActiveSec=30s
 AccuracySec=5s
 Persistent=true

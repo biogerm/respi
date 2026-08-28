@@ -1,0 +1,9 @@
+[Unit]
+Description=Pi management network recovery watchdog
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pi-network-recovery-watchdog
+TimeoutStartSec=5min

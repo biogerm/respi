@@ -417,6 +417,10 @@ if [ -x ../recovery-watchdog/install-hardware-watchdog.sh ]; then
     ../recovery-watchdog/install-hardware-watchdog.sh
 fi
 
+if [ -x ../recovery-watchdog/install-network-recovery-watchdog.sh ]; then
+    ../recovery-watchdog/install-network-recovery-watchdog.sh
+fi
+
 CMD="GatewayPorts yes"
 sudo sed -i "\$i$CMD\n" /etc/ssh/sshd_config
 sudo service ssh restart
