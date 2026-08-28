@@ -412,6 +412,11 @@ if [ "$WIFI" = "true" ]; then
     configureWifiAutoReconnect
 fi
 
+# Enable systemd built-in hardware watchdog recovery.
+if [ -x ../recovery-watchdog/install-hardware-watchdog.sh ]; then
+    ../recovery-watchdog/install-hardware-watchdog.sh
+fi
+
 CMD="GatewayPorts yes"
 sudo sed -i "\$i$CMD\n" /etc/ssh/sshd_config
 sudo service ssh restart
